@@ -92,11 +92,22 @@ st.markdown(
     .block-container {
         padding-top: 1rem !important;
     }
+
+    div.stDownloadButton > button {
+        background-color: #4B9DAF;
+        color: white;
+        border-radius: 0.4rem;
+        padding: 0.4rem 1rem;
+        font-weight: 600;
+    }
+    div.stDownloadButton > button:hover {
+        background-color: #3A8A99;
+    }
+
     </style>
 """,
     unsafe_allow_html=True,
 )
-
 
 
 st.title("Time Series Data Generator")
@@ -115,22 +126,22 @@ with left_col:
     with col1:
         series_type = st.selectbox("Time Series Type", ["White Noise", "Random Walk", "Ornstein-Uhlenbeck"])
     with col2:
+        series_col1, series_col2, series_col3 = st.columns(3)
         if series_type == "Ornstein-Uhlenbeck":
-            ou_col1, ou_col2, ou_col3 = st.columns(3)
-            with ou_col1:
-                theta = st.slider("θ (mean reversion)", min_value=0.0, max_value=1.0, value=0.2, step=0.025, format="%.3f")
-            with ou_col2:
-                mu = st.slider("μ (long-term mean)", -10.0, 10.0, 0.0, step=0.1, format="%.1f")
-            with ou_col3:
-                sigma = st.slider("σ (volatility)", 0.01, 2.0, 0.3, step=0.01, format="%.2f")
+            with series_col1:
+                theta = st.slider("θ (mean reversion)", 0.0, 1.0, 0.2, 0.025, format="%.3f")
+            with series_col2:
+                mu = st.slider("μ (long-term mean)", -10.0, 10.0, 0.0, 0.1, format="%.1f")
+            with series_col3:
+                sigma = st.slider("σ (volatility)", 0.01, 2.0, 0.3, 0.01, format="%.2f")
             rw_drift = None
         elif series_type == "Random Walk":
-            rw_col1, rw_col2, rw_col3 = st.columns(3)
-            with rw_col1:
-                rw_drift = st.slider("Drift", min_value=-0.2, max_value=0.2, value=0.0, step=0.01, format="%.2f")
+            with series_col1:
+                rw_drift = st.slider("Drift", -0.2, 0.2, 0.0, 0.01, format="%.2f")
             theta = mu = sigma = None
         else:
             theta = mu = sigma = rw_drift = None
+
 
     col_data, col_time = st.columns([3, 2])
 
