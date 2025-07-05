@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#4B9DAF"               # soft blue-green
+backgroundColor = "#FFFDF5"            # very light beige/off-white
+secondaryBackgroundColor = "#EDECE6"   # soft neutral contrast
+textColor = "#2C2C2C"                  # slightly softened black
+font = "sans serif"
