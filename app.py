@@ -11,10 +11,12 @@ import colorednoise
 # --- Enums ---
 class SeriesType(str, Enum):
     RANDOM_WALK = "Random Walk"
-    WHITE_NOISE = "White Noise"
-    PINK_NOISE = "Pink Noise"
+    NOISE = "Noise"
     OU_PROCESS = "OU Process"
     CUSTOM = "Custom"
+    # Temporarily keep:
+    WHITE_NOISE = "White Noise"
+    PINK_NOISE = "Pink Noise"
 
 class FillMethod(str, Enum):
     NONE = "None"
@@ -104,6 +106,24 @@ def custom_time_series(num_points, cfg):
 
     return y
 
+
+def generate_noise(num_points, config):
+    cfg = config["noise"]
+    beta = cfg.get("beta", 1.0)
+    mean = cfg.get("mean", 0.0)
+    std = cfg.get("std", 1.0)
+    n_drift = cfg.get("n_drift", 0.0)
+    seed = config["global"].get("rand_seed", None)
+
+    noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=seed)
+    noise = noise * std + mean
+
+    if n_drift != 0:
+        noise += np.linspace(0, n_drift * num_points, num_points)
+
+    return noise
+
+
 def generate_ts(config):
     np.random.seed(config["global"]["rand_seed"])
     num_points = config["global"]["num_points"]
@@ -123,6 +143,8 @@ def generate_ts(config):
         data = ornstein_uhlenbeck_process(num_points, p["theta"], p["mu"], p["sigma"])
     elif series_type == SeriesType.CUSTOM.value:
         data = custom_time_series(num_points, config["custom"])
+    elif series_type == SeriesType.NOISE.value:
+        data = generate_noise(num_points, config)
 
     if not config["global"]["allow_negative"]:
         min_val = np.min(data)
@@ -193,7 +215,7 @@ left_col, spacer, right_col = st.columns([5, 0.5, 5])
 with left_col:
     st.markdown("Generate univariate time series data. Optionally save in .csv format.")
 
-    config = {"global":{}, "ou":{}, "random_walk":{}, "custom":{}}
+    config = {"global": {}, "ou": {}, "random_walk": {}, "custom": {}, "noise": {}}
 
 
     st.subheader("Series Settings")
@@ -262,7 +284,16 @@ with left_col:
                 with cyc_col4:
                     config["custom"]["cyc_decay"] = st.slider("Decay Rate", -0.01, 0.01, 0.0, 0.0005, format="%.3f")
 
-
+        elif series_type == SeriesType.NOISE.value:
+            noise_col1, noise_col2, noise_col3, noise_col4 = st.columns(4)
+            with noise_col1:
+                config["noise"]["beta"] = st.slider("β (Color)", 0.0, 2.0, 1.0, 0.1, format="%.1f")
+            with noise_col2:
+                config["noise"]["mean"] = st.slider("Mean", -5.0, 5.0, 0.0, 0.1)
+            with noise_col3:
+                config["noise"]["std"] = st.slider("Std Dev", 0.1, 5.0, 1.0, 0.1)
+            with noise_col4:
+                config["noise"]["n_drift"] = st.slider("Drift", -0.2, 0.2, 0.0, 0.01)
 
 
     col_data, col_time = st.columns([3, 2])
