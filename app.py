@@ -10,10 +10,10 @@ import colorednoise
 
 # --- Enums ---
 class SeriesType(str, Enum):
-    RANDOM_WALK = "Random Walk (Brown Noise)"
+    RANDOM_WALK = "Random Walk"
     WHITE_NOISE = "White Noise"
     PINK_NOISE = "Pink Noise"
-    OU_PROCESS = "Ornstein-Uhlenbeck"
+    OU_PROCESS = "OU Process"
     CUSTOM = "Custom"
 
 class FillMethod(str, Enum):
@@ -31,7 +31,6 @@ class SeasonalityType(str, Enum):
     NONE = "None"
     SINE = "Sine"
     SAWTOOTH = "Sawtooth"
-    TRIANGLE = "Triangle"
 
 # --- Functions ---
 def ornstein_uhlenbeck_process(num_points, theta, mu, sigma):
@@ -41,15 +40,34 @@ def ornstein_uhlenbeck_process(num_points, theta, mu, sigma):
         ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * np.random.normal()
     return ou
 
+def generate_cycle_component(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
+    t = np.arange(num_points)
+
+    # Slowly changing amplitude
+    mod_amp = 1 + 0.5 * np.sin(2 * np.pi * t / (num_points * 0.8))
+
+    # Slowly changing frequency
+    cycle_freq = freq_base + freq_var * np.sin(2 * np.pi * t / (num_points * 0.6))
+    cycle_phase = np.cumsum(cycle_freq)
+
+    cycle = amp * mod_amp * np.sin(2 * np.pi * cycle_phase)
+
+    # decay
+    decay = np.exp(-decay_rate * t)
+    cycle *= decay
+
+    return cycle
+
 def custom_time_series(num_points, cfg):
     t = np.arange(num_points)
 
     trend_type = cfg["trend_type"]
     seas_type = cfg["seas_type"]
-    lin_slope = cfg.get("lin_slope", 0.5)
+    lin_slope = cfg.get("lin_slope", 0.0)
     lin_intercept = cfg.get("lin_intercept", 0.0)
-    amplitude = cfg.get("amplitude", 1.0)
-    period = cfg.get("period", 50)
+    seas_amp = cfg.get("seas_amp", 1.0)
+    seas_period = cfg.get("seas_period", 50)
+    seas_width = cfg.get("seas_width", 1.0)
     noise_std = cfg.get("noise_std", 0.0)
 
     if trend_type == TrendType.LINEAR.value:
@@ -62,15 +80,24 @@ def custom_time_series(num_points, cfg):
         y = np.zeros(num_points)
 
     if seas_type == SeasonalityType.SINE.value:
-        seasonal = amplitude * np.sin(2 * np.pi * t / period)
+        seasonal = seas_amp * np.sin(2 * np.pi * t / seas_period)
     elif seas_type == SeasonalityType.SAWTOOTH.value:
-        seasonal = amplitude * signal.sawtooth(2 * np.pi * t / period)
-    elif seas_type == SeasonalityType.TRIANGLE.value:
-        seasonal = amplitude * signal.sawtooth(2 * np.pi * t / period, width=0.5)
+        seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=seas_width)
+    # elif seas_type == SeasonalityType.TRIANGLE.value:
+    #     seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=0.5)
     else:
         seasonal = 0
 
     y += seasonal
+
+    # --- Cycle ---
+    if cfg.get("cycle_enabled"):
+        cyc_amp = cfg.get("cyc_amp", 1.0)
+        cyc_freq = cfg.get("cyc_freq", 0.03)
+        cyc_var = cfg.get("cyc_var", 0.01)
+        cyc_decay = cfg.get("cyc_decay", 0.0)
+        cycle = generate_cycle_component(num_points, cyc_amp, cyc_freq, cyc_var, cyc_decay)
+        y += cycle
 
     if noise_std > 0:
         y += np.random.normal(0, noise_std, num_points)
@@ -107,10 +134,10 @@ def generate_ts(config):
         mask = np.random.rand(num_points) < (config["global"]["missing_pct"] / 100)
         data[mask] = np.nan
 
-    fill_method = config["global"]["fill_method"]
-    if fill_method == FillMethod.FORWARD.value:
+    missing_fill_method = config["global"]["missing_fill_method"]
+    if missing_fill_method == FillMethod.FORWARD.value:
         data = pd.Series(data).ffill().to_numpy()
-    elif fill_method == FillMethod.ZERO.value:
+    elif missing_fill_method == FillMethod.ZERO.value:
         data = pd.Series(data).fillna(0).to_numpy()
 
     start = pd.to_datetime(config["global"]["start_time"])
@@ -170,13 +197,14 @@ with left_col:
 
 
     st.subheader("Series Settings")
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1, 3.0])
     with col1:
         series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
     config["global"]["series_type"] = series_type
     with col2:
-        series_col1, series_col2, series_col3 = st.columns(3)
+        
         if series_type == SeriesType.OU_PROCESS.value:
+            series_col1, series_col2, series_col3 = st.columns(3)
             with series_col1:
                 config["ou"]["theta"] = st.slider("θ (mean reversion)", 0.0, 1.0, 0.2, 0.001)
             with series_col2:
@@ -185,21 +213,56 @@ with left_col:
                 config["ou"]["sigma"] = st.slider("σ (volatility)", 0.01, 2.0, 0.3, 0.01)
 
         elif series_type == SeriesType.RANDOM_WALK.value:
+            series_col1, series_col2, series_col3 = st.columns(3)
             with series_col1:
                 rw_drift = st.slider("Drift", -0.2, 0.2, 0.0, 0.01)
             config["random_walk"] = {"rw_drift": rw_drift}
 
         elif series_type == SeriesType.CUSTOM.value:
             config["custom"] = {}
-            with series_col1:
+
+            # First row: Trend settings
+            trend_col1, trend_col2, trend_col3, trend_col4 = st.columns(4)
+            with trend_col1:
                 trend_type = st.selectbox("Trend Component", options=[t.value for t in TrendType])
                 config["custom"]["trend_type"] = trend_type
-                if trend_type == TrendType.LINEAR.value:
-                    with series_col2:
-                        config["custom"]["lin_slope"] = st.slider("Slope", -5.0, 5.0, 0.5, step=0.1)
-                    with series_col3:
-                        config["custom"]["lin_intercept"] = st.slider("Intercept", -100.0, 100.0, 0.0, step=1.0)
-                config["custom"]["seas_type"] = st.selectbox("Seasonality", options=[s.value for s in SeasonalityType])
+            if trend_type == TrendType.LINEAR.value:
+                with trend_col2:
+                    config["custom"]["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.0, step=0.01)
+                with trend_col3:
+                    config["custom"]["lin_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
+
+            # Second row: Seasonality settings
+            seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
+            with seas_col1:
+                seas_type = st.selectbox("Seasonality", options=[s.value for s in SeasonalityType])
+                config["custom"]["seas_type"] = seas_type
+
+            if seas_type != SeasonalityType.NONE.value:
+                with seas_col2:
+                    config["custom"]["seas_amp"] = st.slider("Amplitude", 0.1, 10.0, 1.0, step=0.1)
+                with seas_col3:
+                    config["custom"]["seas_period"] = st.slider("Period", 5, 200, 50, step=5)
+                with seas_col4:
+                    if seas_type == SeasonalityType.SAWTOOTH.value:
+                        config["custom"]["seas_width"] = st.slider("Wave Shape", 0.0, 1.0, 0.5, step=0.1)
+
+            # Third row: Cycle settings
+            cycle_enabled = st.checkbox("Enable Cycle", value=False)
+            config["custom"]["cycle_enabled"] = cycle_enabled
+
+            if cycle_enabled:
+                cyc_col1, cyc_col2, cyc_col3, cyc_col4 = st.columns(4)
+                with cyc_col1:
+                    config["custom"]["cyc_amp"] = st.slider("Amplitude", 0.0, 5.0, 1.0, 0.1, format="%.2f")
+                with cyc_col2:
+                    config["custom"]["cyc_freq"] = st.slider("Base Freq", 0.000, 0.1, 0.03, 0.005, format="%.3f")
+                with cyc_col3:
+                    config["custom"]["cyc_var"] = st.slider("Freq Variability", 0.0, 0.1, 0.01, 0.005, format="%.3f")
+                with cyc_col4:
+                    config["custom"]["cyc_decay"] = st.slider("Decay Rate", -0.01, 0.01, 0.0, 0.0005, format="%.3f")
+
+
 
 
     col_data, col_time = st.columns([3, 2])
@@ -228,7 +291,7 @@ with left_col:
     with col7:
         missing_seed = st.slider("MV Rand Seed", 0, 42, 100, step=1)
     with col8:
-        fill_method = st.selectbox("Fill Method", options=[f.value for f in FillMethod])
+        missing_fill_method = st.selectbox("Fill Method", options=[f.value for f in FillMethod])
 
     config["global"].update({
         "num_points": num_points,
@@ -238,7 +301,7 @@ with left_col:
         "time_interval": time_interval,
         "missing_pct": missing_pct,
         "missing_seed": missing_seed,
-        "fill_method": fill_method,
+        "missing_fill_method": missing_fill_method,
     })
 
 with right_col:
