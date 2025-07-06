@@ -5,6 +5,19 @@ import plotly.graph_objects as go
 from datetime import datetime
 import math
 from scipy.stats import skew, kurtosis
+from enum import Enum
+
+# --- Enums ---
+
+class SeriesType(str, Enum):
+    WHITE_NOISE = "White Noise"
+    RANDOM_WALK = "Random Walk"
+    OU_PROCESS = "Ornstein-Uhlenbeck"
+
+class FillMethod(str, Enum):
+    NONE = "None"
+    FORWARD = "Forward Fill"
+    ZERO = "Fill with Zero"
 
 # --- Functions ---
 def ornstein_uhlenbeck_process(num_points, theta, mu, sigma):
@@ -32,12 +45,12 @@ def generate_ts(
 
     np.random.seed(rand_seed)
 
-    if series_type == "White Noise":
+    if series_type == SeriesType.WHITE_NOISE.value:
         data = np.random.normal(0, 1, num_points)
-    elif series_type == "Random Walk":
+    elif series_type == SeriesType.RANDOM_WALK.value:
         steps = np.random.normal(0, 1, num_points) + rw_drift
         data = np.cumsum(steps)
-    elif series_type == "Ornstein-Uhlenbeck":
+    elif series_type == SeriesType.OU_PROCESS.value:
         data = ornstein_uhlenbeck_process(num_points, theta, mu, sigma)
 
     if not allow_negative:
@@ -52,9 +65,9 @@ def generate_ts(
         data[mask] = np.nan
 
     # Apply fill method
-    if fill_method == "Forward Fill":
+    if fill_method == FillMethod.FORWARD.value:
         data = pd.Series(data).ffill().to_numpy()
-    elif fill_method == "Fill with Zero":
+    elif fill_method == FillMethod.ZERO.value:
         data = pd.Series(data).fillna(0).to_numpy()
 
     start = pd.to_datetime(start_time)
@@ -124,18 +137,18 @@ with left_col:
     st.subheader("Series Settings")
     col1, col2 = st.columns([1, 2])
     with col1:
-        series_type = st.selectbox("Time Series Type", ["White Noise", "Random Walk", "Ornstein-Uhlenbeck"])
+        series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
     with col2:
         series_col1, series_col2, series_col3 = st.columns(3)
-        if series_type == "Ornstein-Uhlenbeck":
+        if series_type == SeriesType.OU_PROCESS.value:
             with series_col1:
-                theta = st.slider("θ (mean reversion)", 0.0, 1.0, 0.2, 0.025, format="%.3f")
+                theta = st.slider("θ (mean reversion)", 0.0, 1.0, 0.2, 0.001, format="%.3f")
             with series_col2:
                 mu = st.slider("μ (long-term mean)", -10.0, 10.0, 0.0, 0.1, format="%.1f")
             with series_col3:
                 sigma = st.slider("σ (volatility)", 0.01, 2.0, 0.3, 0.01, format="%.2f")
             rw_drift = None
-        elif series_type == "Random Walk":
+        elif series_type == SeriesType.RANDOM_WALK.value:
             with series_col1:
                 rw_drift = st.slider("Drift", -0.2, 0.2, 0.0, 0.01, format="%.2f")
             theta = mu = sigma = None
@@ -174,7 +187,7 @@ with left_col:
         # missing_seed = st.number_input("Missing Value Random Seed", value=123, step=1)
         missing_seed = st.slider("MV Rand Seed", 0, 42, 100, step=1, key="mv_rand_seed_input")
     with col8:
-        fill_method = st.selectbox("Fill Method", ["None", "Forward Fill", "Fill with Zero"])
+        fill_method = st.selectbox("Fill Method", options=[f.value for f in FillMethod])
 
 
 # --- Right Panel (Plot and Download) ---
