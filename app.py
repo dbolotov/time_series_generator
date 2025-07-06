@@ -6,12 +6,14 @@ from datetime import datetime
 import math
 from scipy.stats import skew, kurtosis
 from enum import Enum
+import colorednoise
 
 # --- Enums ---
 
 class SeriesType(str, Enum):
+    RANDOM_WALK = "Random Walk (Brown Noise)"
     WHITE_NOISE = "White Noise"
-    RANDOM_WALK = "Random Walk"
+    PINK_NOISE = "Pink Noise"
     OU_PROCESS = "Ornstein-Uhlenbeck"
 
 class FillMethod(str, Enum):
@@ -50,6 +52,8 @@ def generate_ts(
     elif series_type == SeriesType.RANDOM_WALK.value:
         steps = np.random.normal(0, 1, num_points) + rw_drift
         data = np.cumsum(steps)
+    elif series_type == SeriesType.PINK_NOISE.value:
+        data = colorednoise.powerlaw_psd_gaussian(1, num_points)
     elif series_type == SeriesType.OU_PROCESS.value:
         data = ornstein_uhlenbeck_process(num_points, theta, mu, sigma)
 
