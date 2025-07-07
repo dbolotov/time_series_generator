@@ -41,7 +41,6 @@ def generate_custom_series(num_points, cfg, rng):
     seas_amp = cfg.get("seas_amp", 1.0)
     seas_period = cfg.get("seas_period", 50)
     seas_width = cfg.get("seas_width", 1.0)
-    noise_std = cfg.get("noise_std", 0.0)
 
     if trend_type == TrendType.LINEAR.value:
         y = lin_slope * t + lin_intercept
@@ -56,26 +55,35 @@ def generate_custom_series(num_points, cfg, rng):
         seasonal = seas_amp * np.sin(2 * np.pi * t / seas_period)
     elif seas_type == SeasonalityType.SAWTOOTH.value:
         seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=seas_width)
-    # elif seas_type == SeasonalityType.TRIANGLE.value:
-    #     seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=0.5)
     else:
         seasonal = 0
 
     y += seasonal
 
-    # --- Cycle ---
     if cfg.get("cycle_enabled"):
-        cyc_amp = cfg.get("cyc_amp", 1.0)
-        cyc_freq = cfg.get("cyc_freq", 0.03)
-        cyc_var = cfg.get("cyc_var", 0.01)
-        cyc_decay = cfg.get("cyc_decay", 0.0)
-        cycle = generate_cycle_component(num_points, cyc_amp, cyc_freq, cyc_var, cyc_decay)
+        cycle = generate_cycle_component(
+            num_points,
+            cfg.get("cyc_amp", 1.0),
+            cfg.get("cyc_freq", 0.03),
+            cfg.get("cyc_var", 0.01),
+            cfg.get("cyc_decay", 0.0)
+        )
         y += cycle
 
-    if noise_std > 0:
-        y += rng.normal(0, noise_std, num_points)
+    if cfg.get("noise_enabled"):
+        noise_cfg = {
+            "noise": {
+                "beta": cfg.get("noise_beta", 1.0),
+                "mean": cfg.get("noise_mean", 0.0),
+                "std": cfg.get("noise_std", 1.0),
+                "drift": 0.0  # Drift is disabled for custom series
+            }
+        }
+        noise = generate_noise(num_points, noise_cfg, rng)
+        y += noise
 
     return y
+
 
 
 def generate_noise(num_points, config, rng):
@@ -96,11 +104,11 @@ def generate_noise(num_points, config, rng):
 
 
 def generate_ts(config):
-    # np.random.seed(config["global"]["rand_seed"])
-    rng = np.random.default_rng(config["global"]["rand_seed"])
-    num_points = config["global"]["num_points"]
+    global_cfg = config["global"]
+    rng = np.random.default_rng(global_cfg["rand_seed"])
+    num_points = global_cfg["num_points"]
 
-    series_type = config["global"]["series_type"]
+    series_type = global_cfg["series_type"]
 
     if series_type == SeriesType.OU_PROCESS.value:
         p = config["ou"]
@@ -110,26 +118,26 @@ def generate_ts(config):
     elif series_type == SeriesType.NOISE.value:
         data = generate_noise(num_points, config, rng)
 
-    if not config["global"]["allow_negative"]:
+    if not global_cfg["allow_negative"]:
         min_val = np.min(data)
         if min_val < 0:
             data = data - min_val
 
-    if config["global"]["missing_pct"] > 0:
-        # np.random.seed(config["global"]["missing_seed"])
-        rng_missing = np.random.default_rng(config["global"]["missing_seed"])
-        mask = rng_missing.random(num_points) < (config["global"]["missing_pct"] / 100)
-        # mask = np.random.rand(num_points) < (config["global"]["missing_pct"] / 100)
+    if global_cfg["missing_pct"] > 0:
+        # np.random.seed(global_cfg["missing_seed"])
+        rng_missing = np.random.default_rng(global_cfg["missing_seed"])
+        mask = rng_missing.random(num_points) < (global_cfg["missing_pct"] / 100)
+        # mask = np.random.rand(num_points) < (global_cfg["missing_pct"] / 100)
         data[mask] = np.nan
 
-    missing_fill_method = config["global"]["missing_fill_method"]
+    missing_fill_method = global_cfg["missing_fill_method"]
     if missing_fill_method == FillMethod.FORWARD.value:
         data = pd.Series(data).ffill().to_numpy()
     elif missing_fill_method == FillMethod.ZERO.value:
         data = pd.Series(data).fillna(0).to_numpy()
 
-    start = pd.to_datetime(config["global"]["start_time"])
-    interval = config["global"]["time_interval"]
+    start = pd.to_datetime(global_cfg["start_time"])
+    interval = global_cfg["time_interval"]
     timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
 
     return pd.DataFrame({"timestamp": timestamps, "value": data})
