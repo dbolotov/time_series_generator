@@ -50,9 +50,19 @@ def render_custom_series_controls() -> dict[str, any]:
         cfg["trend_type"] = trend_type
     if trend_type == TrendType.LINEAR.value:
         with trend_col2:
-            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.0, step=0.01)
-        with trend_col3:
             cfg["lin_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
+        with trend_col3:
+            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.0, step=0.01)
+    elif trend_type == TrendType.QUADRATIC.value:
+        with trend_col2:
+            cfg["quad_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
+        with trend_col3:
+            cfg["quad_coef"] = st.slider("Quadratic Coef", -0.002, 0.002, 0.001, step=0.0001, format="%.4f")
+    elif trend_type == TrendType.EXPONENTIAL.value:
+        with trend_col2:
+            cfg["exp_base"] = st.slider("Base", 1.000, 1.005, 1.001, step=0.001, format="%.3f")
+        with trend_col3:
+            cfg["exp_scale"] = st.slider("Scale", 0.0, 10.0, 1.0, step=0.1)
 
     # Seasonality settings
     seas_col1, seas_col2, seas_col3, seas_col4 = st.columns(4)
@@ -195,28 +205,13 @@ with left_col:
 with right_col:
     df = generate_ts(config)
 
-    # fig = go.Figure()
-    # fig.add_trace(go.Scatter(
-    #     x=df["timestamp"],
-    #     y=df["value"],
-    #     mode="lines",
-    #     name=series_type,
-    #     line=dict(width=1, color="#D2671A"),
-    # ))
-    # fig.update_layout(
-    #     title="Generated Series",
-    #     height=500,
-    #     xaxis_title="Time",
-    #     yaxis_title="Value",
-    #     xaxis=dict(showgrid=True),
-    #     yaxis=dict(showgrid=True),
-    # )
     fig = plot_series(df, series_type)
 
     st.plotly_chart(fig, use_container_width=True)
 
     summary_df = summarize_series(df["value"])
-    st.dataframe(summary_df, use_container_width=False)
+    st.dataframe(summary_df, hide_index=True, use_container_width=False)
+    
 
     csv = df.to_csv(index=False).encode("utf-8")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

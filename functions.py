@@ -52,9 +52,13 @@ def generate_custom_series(num_points, cfg, rng):
     if trend_type == TrendType.LINEAR.value:
         y = lin_slope * t + lin_intercept
     elif trend_type == TrendType.QUADRATIC.value:
-        y = 0.01 * t**2
+        coef = cfg.get("quad_coef", 0.01)
+        intercept = cfg.get("quad_intercept", 0.0)
+        y = coef * t**2 + intercept
     elif trend_type == TrendType.EXPONENTIAL.value:
-        y = np.exp(0.01 * t)
+        base = cfg.get("exp_base", 1.01)
+        scale = cfg.get("exp_scale", 1.0)
+        y = scale * (base ** t)
     else:
         y = np.zeros(num_points)
 
