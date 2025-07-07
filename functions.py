@@ -6,11 +6,11 @@ import colorednoise
 
 from enums import SeriesType, TrendType, SeasonalityType, FillMethod
 
-def generate_ou_process(num_points, theta, mu, sigma):
+def generate_ou_process(num_points, theta, mu, sigma, rng):
     dt = 1
     ou = np.zeros(num_points)
     for t in range(1, num_points):
-        ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * np.random.normal()
+        ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * rng.normal()
     return ou
 
 def generate_cycle_component(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
@@ -31,7 +31,7 @@ def generate_cycle_component(num_points, amp=0.0, freq_base=0.00, freq_var=0.00,
 
     return cycle
 
-def generate_custom_series(num_points, cfg):
+def generate_custom_series(num_points, cfg, rng):
     t = np.arange(num_points)
 
     trend_type = cfg["trend_type"]
@@ -73,20 +73,20 @@ def generate_custom_series(num_points, cfg):
         y += cycle
 
     if noise_std > 0:
-        y += np.random.normal(0, noise_std, num_points)
+        y += rng.normal(0, noise_std, num_points)
 
     return y
 
 
-def generate_noise(num_points, config):
+def generate_noise(num_points, config, rng):
     cfg = config["noise"]
     beta = cfg.get("beta", 1.0)
     mean = cfg.get("mean", 0.0)
     std = cfg.get("std", 1.0)
     drift = cfg.get("drift", 0.0)
-    seed = config["global"].get("rand_seed", None)
 
-    noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=seed)
+    # Use the passed-in rng directly
+    noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=rng)
     noise = noise * std + mean
 
     if drift != 0:
@@ -96,18 +96,19 @@ def generate_noise(num_points, config):
 
 
 def generate_ts(config):
-    np.random.seed(config["global"]["rand_seed"])
+    # np.random.seed(config["global"]["rand_seed"])
+    rng = np.random.default_rng(config["global"]["rand_seed"])
     num_points = config["global"]["num_points"]
 
     series_type = config["global"]["series_type"]
 
     if series_type == SeriesType.OU_PROCESS.value:
         p = config["ou"]
-        data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"])
+        data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"], rng)
     elif series_type == SeriesType.CUSTOM.value:
-        data = generate_custom_series(num_points, config["custom"])
+        data = generate_custom_series(num_points, config["custom"], rng)
     elif series_type == SeriesType.NOISE.value:
-        data = generate_noise(num_points, config)
+        data = generate_noise(num_points, config, rng)
 
     if not config["global"]["allow_negative"]:
         min_val = np.min(data)
@@ -115,8 +116,10 @@ def generate_ts(config):
             data = data - min_val
 
     if config["global"]["missing_pct"] > 0:
-        np.random.seed(config["global"]["missing_seed"])
-        mask = np.random.rand(num_points) < (config["global"]["missing_pct"] / 100)
+        # np.random.seed(config["global"]["missing_seed"])
+        rng_missing = np.random.default_rng(config["global"]["missing_seed"])
+        mask = rng_missing.random(num_points) < (config["global"]["missing_pct"] / 100)
+        # mask = np.random.rand(num_points) < (config["global"]["missing_pct"] / 100)
         data[mask] = np.nan
 
     missing_fill_method = config["global"]["missing_fill_method"]
