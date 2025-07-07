@@ -4,7 +4,7 @@
 
 # Visual Time Series Generator
 
-[![Try the App](https://img.shields.io/badge/TRY%20THE%20APP-blue?logo=streamlit)](https://visualtimeseriesgenerator.streamlit.app/)
+[![Try the App](https://img.shields.io/badge/TRY%20THE%20APP-blue?logo=streamlit)](https://timeseriesgenerator.streamlit.app/)
 
 
 This repository contains the code for a Streamlit app that generates univariate time series data. It's designed for visual experimentation, teaching, and simulation. The app supports multiple structural components such as trend and seasonality, as well as missing values.
