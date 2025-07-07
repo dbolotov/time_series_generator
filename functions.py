@@ -7,6 +7,12 @@ import plotly.graph_objects as go
 
 from enums import SeriesType, TrendType, SeasonalityType, FillMethod
 
+def generate_noise(num_points, beta, mean, std, drift, rng):
+    noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=rng)
+    noise = noise * std + mean
+    drift_values = np.linspace(0, drift * (num_points - 1), num_points)
+    return noise + drift_values
+
 def generate_ou_process(num_points, theta, mu, sigma, rng):
     dt = 1
     ou = np.zeros(num_points)
@@ -14,7 +20,7 @@ def generate_ou_process(num_points, theta, mu, sigma, rng):
         ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * rng.normal()
     return ou
 
-def generate_cycle_component(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
+def generate_cycle(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
     t = np.arange(num_points)
 
     # Slowly changing amplitude
@@ -62,7 +68,7 @@ def generate_custom_series(num_points, cfg, rng):
     y += seasonal
 
     if cfg.get("cycle_enabled"):
-        cycle = generate_cycle_component(
+        cycle = generate_cycle(
             num_points,
             cfg.get("cyc_amp", 1.0),
             cfg.get("cyc_freq", 0.03),
@@ -72,37 +78,18 @@ def generate_custom_series(num_points, cfg, rng):
         y += cycle
 
     if cfg.get("noise_enabled"):
-        noise_cfg = {
-            "noise": {
-                "beta": cfg.get("noise_beta", 1.0),
-                "mean": cfg.get("noise_mean", 0.0),
-                "std": cfg.get("noise_std", 1.0),
-                "drift": 0.0  # Drift is disabled for custom series
-            }
-        }
-        noise = generate_noise(num_points, noise_cfg, rng)
+        noise = generate_noise(
+            num_points,
+            cfg.get("noise_beta", 1.0),
+            cfg.get("noise_mean", 0.0),
+            cfg.get("noise_std", 1.0),
+            0.0,  # drift is disabled in custom series
+            rng,
+        )
+
         y += noise
 
     return y
-
-
-
-def generate_noise(num_points, config, rng):
-    cfg = config["noise"]
-    beta = cfg.get("beta", 1.0)
-    mean = cfg.get("mean", 0.0)
-    std = cfg.get("std", 1.0)
-    drift = cfg.get("drift", 0.0)
-
-    # Use the passed-in rng directly
-    noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=rng)
-    noise = noise * std + mean
-
-    if drift != 0:
-        noise += np.linspace(0, drift * num_points, num_points)
-
-    return noise
-
 
 def generate_ts(config):
     global_cfg = config["global"]
@@ -111,13 +98,15 @@ def generate_ts(config):
 
     series_type = global_cfg["series_type"]
 
-    if series_type == SeriesType.OU_PROCESS.value:
+    if series_type == SeriesType.NOISE.value:
+        p = config["noise"]
+        data = generate_noise(num_points, p["beta"], p["mean"], p["std"], p["drift"], rng)
+    elif series_type == SeriesType.OU_PROCESS.value:
         p = config["ou"]
         data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"], rng)
     elif series_type == SeriesType.CUSTOM.value:
         data = generate_custom_series(num_points, config["custom"], rng)
-    elif series_type == SeriesType.NOISE.value:
-        data = generate_noise(num_points, config, rng)
+
 
     if not global_cfg["allow_negative"]:
         min_val = np.min(data)
@@ -125,10 +114,8 @@ def generate_ts(config):
             data = data - min_val
 
     if global_cfg["missing_pct"] > 0:
-        # np.random.seed(global_cfg["missing_seed"])
         rng_missing = np.random.default_rng(global_cfg["missing_seed"])
         mask = rng_missing.random(num_points) < (global_cfg["missing_pct"] / 100)
-        # mask = np.random.rand(num_points) < (global_cfg["missing_pct"] / 100)
         data[mask] = np.nan
 
     missing_fill_method = global_cfg["missing_fill_method"]
