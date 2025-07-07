@@ -3,6 +3,7 @@ import pandas as pd
 from scipy import signal
 from scipy.stats import skew, kurtosis
 import colorednoise
+import plotly.graph_objects as go
 
 from enums import SeriesType, TrendType, SeasonalityType, FillMethod
 
@@ -152,3 +153,23 @@ def summarize_series(series: pd.Series) -> pd.DataFrame:
         "Kurtosis": kurtosis(series, nan_policy='omit'),
     }
     return pd.DataFrame([stats]).round(3)
+
+
+def plot_series(df: pd.DataFrame, series_type: str) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df["timestamp"],
+        y=df["value"],
+        mode="lines",
+        name=series_type,
+        line=dict(width=1, color="#D2671A"),
+    ))
+    fig.update_layout(
+        title="Generated Series",
+        height=500,
+        xaxis_title="Time",
+        yaxis_title="Value",
+        xaxis=dict(showgrid=True),
+        yaxis=dict(showgrid=True),
+    )
+    return fig

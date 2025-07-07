@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
+
 from datetime import datetime
 from scipy.stats import skew, kurtosis
 from scipy import signal
@@ -15,7 +15,8 @@ from functions import (
     generate_custom_series,
     generate_ou_process,
     generate_cycle_component,
-    summarize_series
+    summarize_series,
+    plot_series
 )
 
 # --- Functions ---
@@ -198,22 +199,24 @@ with left_col:
 with right_col:
     df = generate_ts(config)
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df["timestamp"],
-        y=df["value"],
-        mode="lines",
-        name=series_type,
-        line=dict(width=1, color="#D2671A"),
-    ))
-    fig.update_layout(
-        title="Generated Series",
-        height=500,
-        xaxis_title="Time",
-        yaxis_title="Value",
-        xaxis=dict(showgrid=True),
-        yaxis=dict(showgrid=True),
-    )
+    # fig = go.Figure()
+    # fig.add_trace(go.Scatter(
+    #     x=df["timestamp"],
+    #     y=df["value"],
+    #     mode="lines",
+    #     name=series_type,
+    #     line=dict(width=1, color="#D2671A"),
+    # ))
+    # fig.update_layout(
+    #     title="Generated Series",
+    #     height=500,
+    #     xaxis_title="Time",
+    #     yaxis_title="Value",
+    #     xaxis=dict(showgrid=True),
+    #     yaxis=dict(showgrid=True),
+    # )
+    fig = plot_series(df, series_type)
+
     st.plotly_chart(fig, use_container_width=True)
 
     summary_df = summarize_series(df["value"])
