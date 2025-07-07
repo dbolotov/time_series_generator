@@ -46,7 +46,7 @@ def render_custom_series_controls() -> dict[str, any]:
     # Trend settings
     trend_col1, trend_col2, trend_col3, trend_col4 = st.columns(4)
     with trend_col1:
-        trend_type = st.selectbox("Trend Component", options=[t.value for t in TrendType])
+        trend_type = st.selectbox("Trend", options=[t.value for t in TrendType])
         cfg["trend_type"] = trend_type
     if trend_type == TrendType.LINEAR.value:
         with trend_col2:
@@ -79,7 +79,7 @@ def render_custom_series_controls() -> dict[str, any]:
                 cfg["seas_width"] = st.slider("Wave Shape", 0.0, 1.0, 0.5, step=0.1)
 
     # Cycle settings
-    cycle_enabled = st.checkbox("Enable Cycle", value=False)
+    cycle_enabled = st.checkbox("Cycle", value=False)
     cfg["cycle_enabled"] = cycle_enabled
     if cycle_enabled:
         cyc_col1, cyc_col2, cyc_col3, cyc_col4 = st.columns(4)
@@ -93,7 +93,7 @@ def render_custom_series_controls() -> dict[str, any]:
             cfg["cyc_decay"] = st.slider("Decay Rate", -0.01, 0.01, 0.0, 0.0005, format="%.3f")
 
     # Noise settings
-    noise_enabled = st.checkbox("Add Noise", value=False)
+    noise_enabled = st.checkbox("Noise", value=False)
     cfg["noise_enabled"] = noise_enabled
     if noise_enabled:
         noise_col1, noise_col2, noise_col3 = st.columns(3)
