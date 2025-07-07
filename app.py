@@ -5,220 +5,176 @@ import plotly.graph_objects as go
 from datetime import datetime
 from scipy.stats import skew, kurtosis
 from scipy import signal
-from enum import Enum
 import colorednoise
 
-# --- Enums ---
-class SeriesType(str, Enum):
-    RANDOM_WALK = "Random Walk"
-    NOISE = "Noise"
-    OU_PROCESS = "OU Process"
-    CUSTOM = "Custom"
-    # Temporarily keep:
-    WHITE_NOISE = "White Noise"
-    PINK_NOISE = "Pink Noise"
+from enums import SeriesType, FillMethod, TrendType, SeasonalityType
 
-class FillMethod(str, Enum):
-    NONE = "None"
-    FORWARD = "Forward Fill"
-    ZERO = "Fill with Zero"
+from functions import (
+    generate_ts,
+    generate_noise,
+    generate_custom_series,
+    generate_ou_process,
+    generate_cycle_component,
+    summarize_series
+)
 
-class TrendType(str, Enum):
-    NONE = "None"
-    LINEAR = "Linear"
-    QUADRATIC = "Quadratic"
-    EXPONENTIAL = "Exponential"
-
-class SeasonalityType(str, Enum):
-    NONE = "None"
-    SINE = "Sine"
-    SAWTOOTH = "Sawtooth"
-
-# --- Functions ---
-def ornstein_uhlenbeck_process(num_points, theta, mu, sigma):
-    dt = 1
-    ou = np.zeros(num_points)
-    for t in range(1, num_points):
-        ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * np.random.normal()
-    return ou
-
-def generate_cycle_component(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
-    t = np.arange(num_points)
-
-    # Slowly changing amplitude
-    mod_amp = 1 + 0.5 * np.sin(2 * np.pi * t / (num_points * 0.8))
-
-    # Slowly changing frequency
-    cycle_freq = freq_base + freq_var * np.sin(2 * np.pi * t / (num_points * 0.6))
-    cycle_phase = np.cumsum(cycle_freq)
-
-    cycle = amp * mod_amp * np.sin(2 * np.pi * cycle_phase)
-
-    # decay
-    decay = np.exp(-decay_rate * t)
-    cycle *= decay
-
-    return cycle
-
-def custom_time_series(num_points, cfg):
-    t = np.arange(num_points)
-
-    trend_type = cfg["trend_type"]
-    seas_type = cfg["seas_type"]
-    lin_slope = cfg.get("lin_slope", 0.0)
-    lin_intercept = cfg.get("lin_intercept", 0.0)
-    seas_amp = cfg.get("seas_amp", 1.0)
-    seas_period = cfg.get("seas_period", 50)
-    seas_width = cfg.get("seas_width", 1.0)
-    noise_std = cfg.get("noise_std", 0.0)
-
-    if trend_type == TrendType.LINEAR.value:
-        y = lin_slope * t + lin_intercept
-    elif trend_type == TrendType.QUADRATIC.value:
-        y = 0.01 * t**2
-    elif trend_type == TrendType.EXPONENTIAL.value:
-        y = np.exp(0.01 * t)
-    else:
-        y = np.zeros(num_points)
-
-    if seas_type == SeasonalityType.SINE.value:
-        seasonal = seas_amp * np.sin(2 * np.pi * t / seas_period)
-    elif seas_type == SeasonalityType.SAWTOOTH.value:
-        seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=seas_width)
-    # elif seas_type == SeasonalityType.TRIANGLE.value:
-    #     seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=0.5)
-    else:
-        seasonal = 0
-
-    y += seasonal
-
-    # --- Cycle ---
-    if cfg.get("cycle_enabled"):
-        cyc_amp = cfg.get("cyc_amp", 1.0)
-        cyc_freq = cfg.get("cyc_freq", 0.03)
-        cyc_var = cfg.get("cyc_var", 0.01)
-        cyc_decay = cfg.get("cyc_decay", 0.0)
-        cycle = generate_cycle_component(num_points, cyc_amp, cyc_freq, cyc_var, cyc_decay)
-        y += cycle
-
-    if noise_std > 0:
-        y += np.random.normal(0, noise_std, num_points)
-
-    return y
+# --- Styling ---
+with open("styles.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
-def generate_noise(num_points, config):
-    cfg = config["noise"]
-    beta = cfg.get("beta", 1.0)
-    mean = cfg.get("mean", 0.0)
-    std = cfg.get("std", 1.0)
-    n_drift = cfg.get("n_drift", 0.0)
-    seed = config["global"].get("rand_seed", None)
+# # --- Functions ---
+# def generate_ou_process(num_points, theta, mu, sigma):
+#     dt = 1
+#     ou = np.zeros(num_points)
+#     for t in range(1, num_points):
+#         ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * np.random.normal()
+#     return ou
 
-    noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=seed)
-    noise = noise * std + mean
+# def generate_cycle_component(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
+#     t = np.arange(num_points)
 
-    if n_drift != 0:
-        noise += np.linspace(0, n_drift * num_points, num_points)
+#     # Slowly changing amplitude
+#     mod_amp = 1 + 0.5 * np.sin(2 * np.pi * t / (num_points * 0.8))
 
-    return noise
+#     # Slowly changing frequency
+#     cycle_freq = freq_base + freq_var * np.sin(2 * np.pi * t / (num_points * 0.6))
+#     cycle_phase = np.cumsum(cycle_freq)
+
+#     cycle = amp * mod_amp * np.sin(2 * np.pi * cycle_phase)
+
+#     # decay
+#     decay = np.exp(-decay_rate * t)
+#     cycle *= decay
+
+#     return cycle
+
+# def generate_custom_series(num_points, cfg):
+#     t = np.arange(num_points)
+
+#     trend_type = cfg["trend_type"]
+#     seas_type = cfg["seas_type"]
+#     lin_slope = cfg.get("lin_slope", 0.0)
+#     lin_intercept = cfg.get("lin_intercept", 0.0)
+#     seas_amp = cfg.get("seas_amp", 1.0)
+#     seas_period = cfg.get("seas_period", 50)
+#     seas_width = cfg.get("seas_width", 1.0)
+#     noise_std = cfg.get("noise_std", 0.0)
+
+#     if trend_type == TrendType.LINEAR.value:
+#         y = lin_slope * t + lin_intercept
+#     elif trend_type == TrendType.QUADRATIC.value:
+#         y = 0.01 * t**2
+#     elif trend_type == TrendType.EXPONENTIAL.value:
+#         y = np.exp(0.01 * t)
+#     else:
+#         y = np.zeros(num_points)
+
+#     if seas_type == SeasonalityType.SINE.value:
+#         seasonal = seas_amp * np.sin(2 * np.pi * t / seas_period)
+#     elif seas_type == SeasonalityType.SAWTOOTH.value:
+#         seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=seas_width)
+#     # elif seas_type == SeasonalityType.TRIANGLE.value:
+#     #     seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=0.5)
+#     else:
+#         seasonal = 0
+
+#     y += seasonal
+
+#     # --- Cycle ---
+#     if cfg.get("cycle_enabled"):
+#         cyc_amp = cfg.get("cyc_amp", 1.0)
+#         cyc_freq = cfg.get("cyc_freq", 0.03)
+#         cyc_var = cfg.get("cyc_var", 0.01)
+#         cyc_decay = cfg.get("cyc_decay", 0.0)
+#         cycle = generate_cycle_component(num_points, cyc_amp, cyc_freq, cyc_var, cyc_decay)
+#         y += cycle
+
+#     if noise_std > 0:
+#         y += np.random.normal(0, noise_std, num_points)
+
+#     return y
 
 
-def generate_ts(config):
-    np.random.seed(config["global"]["rand_seed"])
-    num_points = config["global"]["num_points"]
+# def generate_noise(num_points, config):
+#     cfg = config["noise"]
+#     beta = cfg.get("beta", 1.0)
+#     mean = cfg.get("mean", 0.0)
+#     std = cfg.get("std", 1.0)
+#     n_drift = cfg.get("n_drift", 0.0)
+#     seed = config["global"].get("rand_seed", None)
 
-    series_type = config["global"]["series_type"]
+#     noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=seed)
+#     noise = noise * std + mean
 
-    if series_type == SeriesType.WHITE_NOISE.value:
-        data = np.random.normal(0, 1, num_points)
-    elif series_type == SeriesType.RANDOM_WALK.value:
-        drift = config["random_walk"].get("rw_drift", 0.0)
-        steps = np.random.normal(0, 1, num_points) + drift
-        data = np.cumsum(steps)
-    elif series_type == SeriesType.PINK_NOISE.value:
-        data = colorednoise.powerlaw_psd_gaussian(1, num_points)
-    elif series_type == SeriesType.OU_PROCESS.value:
-        p = config["ou"]
-        data = ornstein_uhlenbeck_process(num_points, p["theta"], p["mu"], p["sigma"])
-    elif series_type == SeriesType.CUSTOM.value:
-        data = custom_time_series(num_points, config["custom"])
-    elif series_type == SeriesType.NOISE.value:
-        data = generate_noise(num_points, config)
+#     if n_drift != 0:
+#         noise += np.linspace(0, n_drift * num_points, num_points)
 
-    if not config["global"]["allow_negative"]:
-        min_val = np.min(data)
-        if min_val < 0:
-            data = data - min_val
+#     return noise
 
-    if config["global"]["missing_pct"] > 0:
-        np.random.seed(config["global"]["missing_seed"])
-        mask = np.random.rand(num_points) < (config["global"]["missing_pct"] / 100)
-        data[mask] = np.nan
 
-    missing_fill_method = config["global"]["missing_fill_method"]
-    if missing_fill_method == FillMethod.FORWARD.value:
-        data = pd.Series(data).ffill().to_numpy()
-    elif missing_fill_method == FillMethod.ZERO.value:
-        data = pd.Series(data).fillna(0).to_numpy()
+# def generate_ts(config):
+#     np.random.seed(config["global"]["rand_seed"])
+#     num_points = config["global"]["num_points"]
 
-    start = pd.to_datetime(config["global"]["start_time"])
-    interval = config["global"]["time_interval"]
-    timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
+#     series_type = config["global"]["series_type"]
 
-    return pd.DataFrame({"timestamp": timestamps, "value": data})
+#     if series_type == SeriesType.OU_PROCESS.value:
+#         p = config["ou"]
+#         data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"])
+#     elif series_type == SeriesType.CUSTOM.value:
+#         data = generate_custom_series(num_points, config["custom"])
+#     elif series_type == SeriesType.NOISE.value:
+#         data = generate_noise(num_points, config)
 
-def summarize_ts(series: pd.Series) -> pd.DataFrame:
-    stats = {
-        "Mean": series.mean(),
-        "Std Dev": series.std(),
-        "Min": series.min(),
-        "Max": series.max(),
-        "Skewness": skew(series, nan_policy='omit'),
-        "Kurtosis": kurtosis(series, nan_policy='omit'),
-    }
-    return pd.DataFrame([stats]).round(3)
+#     if not config["global"]["allow_negative"]:
+#         min_val = np.min(data)
+#         if min_val < 0:
+#             data = data - min_val
+
+#     if config["global"]["missing_pct"] > 0:
+#         np.random.seed(config["global"]["missing_seed"])
+#         mask = np.random.rand(num_points) < (config["global"]["missing_pct"] / 100)
+#         data[mask] = np.nan
+
+#     missing_fill_method = config["global"]["missing_fill_method"]
+#     if missing_fill_method == FillMethod.FORWARD.value:
+#         data = pd.Series(data).ffill().to_numpy()
+#     elif missing_fill_method == FillMethod.ZERO.value:
+#         data = pd.Series(data).fillna(0).to_numpy()
+
+#     start = pd.to_datetime(config["global"]["start_time"])
+#     interval = config["global"]["time_interval"]
+#     timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
+
+#     return pd.DataFrame({"timestamp": timestamps, "value": data})
+
+# def summarize_series(series: pd.Series) -> pd.DataFrame:
+#     stats = {
+#         "Mean": series.mean(),
+#         "Std Dev": series.std(),
+#         "Min": series.min(),
+#         "Max": series.max(),
+#         "Skewness": skew(series, nan_policy='omit'),
+#         "Kurtosis": kurtosis(series, nan_policy='omit'),
+#     }
+#     return pd.DataFrame([stats]).round(3)
 
 # --- Layout and Page Config ---
 st.set_page_config(layout="wide")
 
-# --- Styling ---
-st.markdown("""
-    <style>
-    .stSlider > label {
-        font-size: 0.55rem;
-        font-weight: 500;
-        color: #333;
-        margin-bottom: 0.3rem;
-    }
-    .block-container {
-        padding-top: 1rem !important;
-    }
-
-    div.stDownloadButton > button {
-        background-color: #4B9DAF;
-        color: white;
-        border-radius: 0.4rem;
-        padding: 0.4rem 1rem;
-        font-weight: 600;
-    }
-    div.stDownloadButton > button:hover {
-        background-color: #3A8A99;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-st.title("Time Series Data Generator")
+st.markdown('<div class="boxed-title">Time Series Data Generator</div>', unsafe_allow_html=True)
 
 left_col, spacer, right_col = st.columns([5, 0.5, 5])
 
 with left_col:
     st.markdown("Generate univariate time series data. Optionally save in .csv format.")
 
-    config = {"global": {}, "ou": {}, "random_walk": {}, "custom": {}, "noise": {}}
+    config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
 
 
-    st.subheader("Series Settings")
+    # st.subheader("Series Settings")
+    st.markdown('<div class="section-header">Series Settings</div>', unsafe_allow_html=True)
     col1, col2 = st.columns([1, 3.0])
     with col1:
         series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
@@ -228,17 +184,11 @@ with left_col:
         if series_type == SeriesType.OU_PROCESS.value:
             series_col1, series_col2, series_col3 = st.columns(3)
             with series_col1:
-                config["ou"]["theta"] = st.slider("θ (mean reversion)", 0.0, 1.0, 0.2, 0.001)
+                config["ou"]["theta"] = st.slider("θ (Mean reversion)", 0.0, 1.0, 0.2, 0.001)
             with series_col2:
-                config["ou"]["mu"] = st.slider("μ (long-term mean)", -10.0, 10.0, 0.0, 0.1)
+                config["ou"]["mu"] = st.slider("μ (Long-term mean)", -10.0, 10.0, 0.0, 0.1)
             with series_col3:
-                config["ou"]["sigma"] = st.slider("σ (volatility)", 0.01, 2.0, 0.3, 0.01)
-
-        elif series_type == SeriesType.RANDOM_WALK.value:
-            series_col1, series_col2, series_col3 = st.columns(3)
-            with series_col1:
-                rw_drift = st.slider("Drift", -0.2, 0.2, 0.0, 0.01)
-            config["random_walk"] = {"rw_drift": rw_drift}
+                config["ou"]["sigma"] = st.slider("σ (Volatility)", 0.01, 2.0, 0.3, 0.01)
 
         elif series_type == SeriesType.CUSTOM.value:
             config["custom"] = {}
@@ -293,12 +243,12 @@ with left_col:
             with noise_col3:
                 config["noise"]["std"] = st.slider("Std Dev", 0.1, 5.0, 1.0, 0.1)
             with noise_col4:
-                config["noise"]["n_drift"] = st.slider("Drift", -0.2, 0.2, 0.0, 0.01)
+                config["noise"]["drift"] = st.slider("Drift", -0.2, 0.2, 0.0, 0.01)
 
 
     col_data, col_time = st.columns([3, 2])
     with col_data:
-        st.markdown("### Data Settings")
+        st.markdown('<div class="section-header">Data Settings</div>', unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
             num_points = st.slider("Number of Points", 100, 1000, 300, step=50)
@@ -308,14 +258,14 @@ with left_col:
             allow_negative = st.checkbox("Allow Negatives", value=True)
 
     with col_time:
-        st.markdown("### Time Settings")
+        st.markdown('<div class="section-header">Time Settings</div>', unsafe_allow_html=True)
         col4, col5 = st.columns([2, 1])
         with col4:
             start_time = st.text_input("Starting Timestamp", value="2000-01-01 00:00:00")
         with col5:
             time_interval = st.number_input("Interval (sec)", min_value=1, value=60, step=1)
 
-    st.subheader("Anomalies and Missing Values")
+    st.markdown('<div class="section-header">Missing Value Settings</div>', unsafe_allow_html=True)
     col6, col7, col8 = st.columns([1, 1, 1])
     with col6:
         missing_pct = st.slider("Missing Data (%)", 0.0, 40.0, 0.0, step=0.5)
@@ -356,7 +306,7 @@ with right_col:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    summary_df = summarize_ts(df["value"])
+    summary_df = summarize_series(df["value"])
     st.dataframe(summary_df, use_container_width=False)
 
     csv = df.to_csv(index=False).encode("utf-8")
