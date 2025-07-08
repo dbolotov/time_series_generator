@@ -52,7 +52,7 @@ def render_custom_series_controls() -> dict[str, any]:
         with cols[1]:
             cfg["lin_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
         with cols[2]:
-            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.0, step=0.01)
+            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.01, step=0.01)
     elif trend_type == TrendType.QUADRATIC.value:
         with cols[1]:
             cfg["quad_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)

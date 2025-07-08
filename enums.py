@@ -11,12 +11,12 @@ class FillMethod(str, Enum):
     ZERO = "Fill with Zero"
 
 class TrendType(str, Enum):
-    NONE = "None"
     LINEAR = "Linear"
+    NONE = "None"
     QUADRATIC = "Quadratic"
-    EXPONENTIAL = "Exponential"
+    EXPONENTIAL = "Exp"
 
 class SeasonalityType(str, Enum):
-    NONE = "None"
     SINE = "Sine"
+    NONE = "None"
     SAWTOOTH = "Sawtooth"
