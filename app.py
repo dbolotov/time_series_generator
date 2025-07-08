@@ -195,7 +195,6 @@ with left_col:
     st.markdown('<div class="boxed-title">Visual Time Series Generator</div>', unsafe_allow_html=True)
 
     st.markdown("Generate univariate time series data. Optionally save in .csv format.")
-    # st.markdown('<div class="section-header">Time Series</div>', unsafe_allow_html=True)
 
     with st.expander("Time Series", expanded=True):
 
