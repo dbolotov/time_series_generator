@@ -130,7 +130,9 @@ def generate_ts(config):
 
     start = pd.to_datetime(global_cfg["start_time"])
     interval = global_cfg["time_interval"]
-    timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
+    # timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
+    unit = global_cfg.get("interval_unit", "s")
+    timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit))
 
     return pd.DataFrame({"timestamp": timestamps, "value": data})
 

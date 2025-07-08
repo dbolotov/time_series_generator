@@ -111,9 +111,9 @@ def render_custom_series_controls() -> dict[str, any]:
 
 def render_data_and_time_controls() -> dict[str, any]:
     with st.expander("Data & Time"):
-        cols = st.columns([1, 1, 1, 2, 1])
+        cols = st.columns([1, 1, 1, 2, 1, 1])
         with cols[0]:
-            num_points = st.number_input("Number of Points", 10, 10000, 300, step=10)
+            num_points = st.number_input("Data Points", 10, 10000, 300, step=10)
         with cols[1]:
             rand_seed = st.number_input("Rand Seed", 0, 100, 42, step=1)
         with cols[2]:
@@ -121,7 +121,14 @@ def render_data_and_time_controls() -> dict[str, any]:
         with cols[3]:
             start_time = st.text_input("Starting Timestamp", value="2000-01-01 00:00:00")
         with cols[4]:
-            time_interval = st.number_input("Interval (sec)", min_value=1, value=60, step=1)
+            time_interval = st.number_input("Interval", min_value=1, value=60, step=1)
+        with cols[5]:
+            # interval_unit = st.selectbox("Interval Unit", options=["ms", "s", "min", "h", "D"], index=1)
+            interval_unit = st.selectbox("Interval Unit", options=["ms", "s", "min", "h", "D"],
+                                        format_func=lambda x: {
+                                            "ms": "ms", "s": "sec", "min": "min", 
+                                            "h": "hr", "D": "day"}.get(x, x)
+                                        )
 
     return {
         "num_points": num_points,
@@ -129,6 +136,7 @@ def render_data_and_time_controls() -> dict[str, any]:
         "allow_negative": allow_negative,
         "start_time": start_time,
         "time_interval": time_interval,
+        "interval_unit": interval_unit
     }
 
 def render_missing_data_controls() -> dict[str, any]:
