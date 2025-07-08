@@ -7,10 +7,11 @@
 [![Try the App](https://img.shields.io/badge/TRY%20THE%20APP-blue?logo=streamlit)](https://timeseriesgenerator.streamlit.app/)
 
 
-This repository contains the code for a Streamlit app that generates univariate time series data. It's designed for visual experimentation, teaching, and simulation. The app supports multiple structural components such as trend and seasonality, as well as missing values.
+This repository contains the code for a Streamlit app that generates univariate time series data. It's designed for visual experimentation, teaching, and simulation. The app supports multiple structural components such as trend and seasonality, as well as missing values and anomalies.
 
 **Features**
 - Interactive controls for several types of time series
+- Controls for missing values and anomalies
 - CSV export for generated series
 - Dynamic plot and summary stats
 
@@ -28,4 +29,4 @@ You can choose from predefined series types or build a custom one. For custom se
 - Add a cyclical component with decay
 - Add colored noise with adjustable parameters
 
-The app then generates and plots the resulting time series. You can export it for use in modeling, testing, or teaching.
+The app then generates and plots the resulting time series. You can also export the data as a .csv file.
