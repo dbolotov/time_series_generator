@@ -108,29 +108,25 @@ def render_custom_series_controls() -> dict[str, any]:
 
     return cfg
 
-def render_data_controls() -> dict[str, any]:
-    st.markdown('<div class="section-header">Data Settings</div>', unsafe_allow_html=True)
-    cols = st.columns([1, 1, 1])
-    with cols[0]:
-        num_points = st.slider("Number of Points", 20, 1000, 300, step=20)
-    with cols[1]:
-        rand_seed = st.slider("Rand Seed", 0, 100, 42, step=1)
-    with cols[2]:
-        allow_negative = st.checkbox("Allow Negatives", value=True)
+
+def render_data_and_time_controls() -> dict[str, any]:
+    with st.expander("Data & Time Settings"):
+        cols = st.columns([1, 1, 1, 2, 1])
+        with cols[0]:
+            num_points = st.number_input("Number of Points", 10, 10000, 300, step=10)
+        with cols[1]:
+            rand_seed = st.number_input("Rand Seed", 0, 100, 42, step=1)
+        with cols[2]:
+            allow_negative = st.checkbox("Allow Neg", value=True)
+        with cols[3]:
+            start_time = st.text_input("Starting Timestamp", value="2000-01-01 00:00:00")
+        with cols[4]:
+            time_interval = st.number_input("Interval (sec)", min_value=1, value=60, step=1)
+
     return {
         "num_points": num_points,
         "rand_seed": rand_seed,
         "allow_negative": allow_negative,
-    }
-
-def render_time_controls() -> dict[str, any]:
-    st.markdown('<div class="section-header">Time Settings</div>', unsafe_allow_html=True)
-    cols = st.columns([2, 1])
-    with cols[0]:
-        start_time = st.text_input("Starting Timestamp", value="2000-01-01 00:00:00")
-    with cols[1]:
-        time_interval = st.number_input("Interval (sec)", min_value=1, value=60, step=1)
-    return {
         "start_time": start_time,
         "time_interval": time_interval,
     }
@@ -141,7 +137,7 @@ def render_missing_data_controls() -> dict[str, any]:
         with cols[0]:
             missing_pct = st.slider("Missing Data (%)", 0.0, 40.0, 0.0, step=0.5)
         with cols[1]:
-            missing_seed = st.slider("MV Rand Seed", 0, 100, 42, step=1)
+            missing_seed = st.number_input("MV Rand Seed", 0, 100, 42, step=1)
         with cols[2]:
             missing_fill_method = st.selectbox("Fill Method", options=[f.value for f in FillMethod])
     return {
@@ -170,13 +166,13 @@ with left_col:
 
     config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
 
-    col1, col2 = st.columns([1, 3.0])
+    cols = st.columns([1, 3.0])
 
-    with col1:
+    with cols[0]:
         series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
     config["global"]["series_type"] = series_type
 
-    with col2:
+    with cols[1]:
 
         if series_type == SeriesType.OU_PROCESS.value:
             config["ou"] = render_ou_controls()
@@ -187,16 +183,12 @@ with left_col:
         elif series_type == SeriesType.CUSTOM.value:
             config["custom"] = render_custom_series_controls()
 
-    col_data, col_time = st.columns([3, 2])
-    with col_data:
-        data_cfg = render_data_controls()
-    with col_time:
-        time_cfg = render_time_controls()
 
+    data_time_cfg = render_data_and_time_controls()
     missing_cfg = render_missing_data_controls()
 
-    config["global"].update(data_cfg)
-    config["global"].update(time_cfg)
+    config["global"].update(data_time_cfg)
+
     config["global"].update(missing_cfg)
 
     # reusing rand_seed from global settings for the custom series.
@@ -235,17 +227,3 @@ with right_col:
     st.download_button("Download CSV", data=csv, file_name=file_name, mime="text/csv")
 
 
-# def render_missing_data_controls() -> dict[str, any]:
-#     st.markdown('<div class="section-header">Missing Value Settings</div>', unsafe_allow_html=True)
-#     col6, col7, col8 = st.columns([1, 1, 1])
-#     with col6:
-#         missing_pct = st.slider("Missing Data (%)", 0.0, 40.0, 0.0, step=0.5)
-#     with col7:
-#         missing_seed = st.slider("MV Rand Seed", 0, 100, 42, step=1)
-#     with col8:
-#         missing_fill_method = st.selectbox("Fill Method", options=[f.value for f in FillMethod])
-#     return {
-#         "missing_pct": missing_pct,
-#         "missing_seed": missing_seed,
-#         "missing_fill_method": missing_fill_method,
-#     }
