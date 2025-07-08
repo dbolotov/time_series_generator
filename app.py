@@ -110,7 +110,7 @@ def render_custom_series_controls() -> dict[str, any]:
 
 
 def render_data_and_time_controls() -> dict[str, any]:
-    with st.expander("Data & Time Settings"):
+    with st.expander("Data & Time"):
         cols = st.columns([1, 1, 1, 2, 1])
         with cols[0]:
             num_points = st.number_input("Number of Points", 10, 10000, 300, step=10)
@@ -132,7 +132,7 @@ def render_data_and_time_controls() -> dict[str, any]:
     }
 
 def render_missing_data_controls() -> dict[str, any]:
-    with st.expander("Missing Value Settings"):
+    with st.expander("Missing Values"):
         cols = st.columns([1, 1, 1])
         with cols[0]:
             missing_pct = st.slider("Missing Data (%)", 0.0, 40.0, 0.0, step=0.5)
@@ -162,26 +162,28 @@ with left_col:
     st.markdown('<div class="boxed-title">Visual Time Series Generator</div>', unsafe_allow_html=True)
 
     st.markdown("Generate univariate time series data. Optionally save in .csv format.")
-    st.markdown('<div class="section-header">Series Settings</div>', unsafe_allow_html=True)
+    # st.markdown('<div class="section-header">Time Series</div>', unsafe_allow_html=True)
 
-    config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
+    with st.expander("Time Series", expanded=True):
 
-    cols = st.columns([1, 3.0])
+        config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
 
-    with cols[0]:
-        series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
-    config["global"]["series_type"] = series_type
+        cols = st.columns([1, 3.0])
 
-    with cols[1]:
+        with cols[0]:
+            series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
+        config["global"]["series_type"] = series_type
 
-        if series_type == SeriesType.OU_PROCESS.value:
-            config["ou"] = render_ou_controls()
+        with cols[1]:
 
-        elif series_type == SeriesType.NOISE.value:
-            config["noise"] = render_noise_controls()
+            if series_type == SeriesType.OU_PROCESS.value:
+                config["ou"] = render_ou_controls()
 
-        elif series_type == SeriesType.CUSTOM.value:
-            config["custom"] = render_custom_series_controls()
+            elif series_type == SeriesType.NOISE.value:
+                config["noise"] = render_noise_controls()
+
+            elif series_type == SeriesType.CUSTOM.value:
+                config["custom"] = render_custom_series_controls()
 
 
     data_time_cfg = render_data_and_time_controls()
