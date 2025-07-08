@@ -7,7 +7,7 @@ from scipy.stats import skew, kurtosis
 from scipy import signal
 import colorednoise
 
-from enums import SeriesType, FillMethod, TrendType, SeasonalityType
+from enums import SeriesType, FillMethod, TrendType, SeasonalityType, AnomalyType
 
 from functions import (
     generate_ts,
@@ -52,7 +52,7 @@ def render_custom_series_controls() -> dict[str, any]:
         with cols[1]:
             cfg["lin_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
         with cols[2]:
-            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.01, step=0.01)
+            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.05, step=0.05)
     elif trend_type == TrendType.QUADRATIC.value:
         with cols[1]:
             cfg["quad_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
@@ -154,6 +154,31 @@ def render_missing_data_controls() -> dict[str, any]:
         "missing_fill_method": missing_fill_method,
     }
 
+def render_anomaly_controls(num_points) -> dict[str, any]:
+    with st.expander("Anomalies"):
+        cfg = {}
+
+        cols = st.columns([0.8, 1, 0.5, 1])
+        with cols[0]:
+            anomaly_type = st.selectbox("Anomaly Type", [a.value for a in AnomalyType])
+            cfg["anomaly_type"] = anomaly_type
+
+            if anomaly_type == AnomalyType.VALUE_SPIKE.value:
+                        
+                with cols[1]:
+                    idx_range = st.slider("Range (index)", 0, num_points - 1, (int(num_points * 0.3), int(num_points * 0.4)))
+                with cols[2]:
+                    anomaly_mode = st.selectbox("Mode", ["Mult", "Add"], index=0)
+                with cols[3]:
+                    magnitude = st.slider("Magnitude (% of original)", -300.0, 300.0, 100.0, step=10.0)
+                
+                
+                cfg["range"] = idx_range
+                cfg["mode"] = anomaly_mode
+                cfg["magnitude_pct"] = magnitude
+
+        return cfg
+
 # --- Styling ---
 with open("styles.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
@@ -198,8 +223,11 @@ with left_col:
     missing_cfg = render_missing_data_controls()
 
     config["global"].update(data_time_cfg)
-
     config["global"].update(missing_cfg)
+
+    anomaly_cfg = render_anomaly_controls(config["global"]["num_points"])
+    config["global"].update(anomaly_cfg)
+
 
     # reusing rand_seed from global settings for the custom series.
     # do this here because config["global"]["rand_seed"] needs to be set first.

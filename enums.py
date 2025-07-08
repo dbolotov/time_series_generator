@@ -12,11 +12,15 @@ class FillMethod(str, Enum):
 
 class TrendType(str, Enum):
     LINEAR = "Linear"
-    NONE = "None"
     QUADRATIC = "Quadratic"
     EXPONENTIAL = "Exp"
+    NONE = "None"
 
 class SeasonalityType(str, Enum):
     SINE = "Sine"
-    NONE = "None"
     SAWTOOTH = "Sawtooth"
+    NONE = "None"
+
+class AnomalyType(str, Enum):
+    NONE = "None"
+    VALUE_SPIKE = "Value Spike"

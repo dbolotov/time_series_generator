@@ -5,7 +5,7 @@ from scipy.stats import skew, kurtosis
 import colorednoise
 import plotly.graph_objects as go
 
-from enums import SeriesType, TrendType, SeasonalityType, FillMethod
+from enums import SeriesType, TrendType, SeasonalityType, FillMethod, AnomalyType
 
 def generate_noise(num_points, beta, mean, std, drift, rng):
     noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=rng)
@@ -134,7 +134,28 @@ def generate_ts(config):
     unit = global_cfg.get("interval_unit", "s")
     timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit))
 
-    return pd.DataFrame({"timestamp": timestamps, "value": data})
+    labels = np.zeros(num_points, dtype=int)  # 0 = normal, 1 = anomaly
+
+    if global_cfg.get("anomaly_type") == AnomalyType.VALUE_SPIKE.value:
+        start, end = global_cfg.get("range", (0, 0))
+        pct = global_cfg.get("magnitude_pct", 100.0) / 100.0
+        mode = global_cfg.get("mode", "Mult")
+
+        if end > start:
+            anomaly_indices = np.arange(start, end)
+            labels[anomaly_indices] = 1
+
+        if end > start:
+            anomaly_indices = np.arange(start, end)
+            labels[anomaly_indices] = 1
+
+            if mode == "Mult":
+                data[anomaly_indices] *= (1 + pct)
+
+            elif mode == "Add":
+                data[anomaly_indices] += pct * 10
+
+    return pd.DataFrame({"timestamp": timestamps, "value": data, "anomaly": labels})
 
 def summarize_series(series: pd.Series) -> pd.DataFrame:
     stats = {
