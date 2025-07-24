@@ -23,10 +23,10 @@
 /* --- Title Box --- */
 .boxed-title {
     border: 3px solid #4B9DAF;
-    padding: 0.5rem 1rem;
+    padding: 0.2rem 1rem;
     border-radius: 0.0rem;
     display: inline-block;
-    font-size: 2.7rem;
+    font-size: 2.6rem;
     font-weight: 600;
     color: #333;
     margin-bottom: 1rem;
