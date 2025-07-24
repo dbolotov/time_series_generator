@@ -20,24 +20,53 @@ def render_ou_controls() -> dict[str, any]:
     cfg = {}
     cols = st.columns(3)
     with cols[0]:
-        cfg["theta"] = st.slider("θ (Mean reversion)", 0.0, 1.0, 0.2, 0.001)
+        cfg["theta"] = st.slider(
+            "θ (Mean reversion)", 
+            0.0, 1.0, 0.2, 0.001,
+            help="Speed at which values return to the long-term mean (μ). Higher = quicker reversion."
+        )
     with cols[1]:
-        cfg["mu"] = st.slider("μ (Long-term mean)", -10.0, 10.0, 0.0, 0.1)
+        cfg["mu"] = st.slider(
+            "μ (Long-term mean)", 
+            -10.0, 10.0, 0.0, 0.1,
+            help="The average value the series tends to revert toward."
+        )
     with cols[2]:
-        cfg["sigma"] = st.slider("σ (Volatility)", 0.01, 2.0, 0.3, 0.01)
+        cfg["sigma"] = st.slider(
+            "σ (Volatility)", 
+            0.01, 2.0, 0.3, 0.01,
+            help="Controls how noisy or volatile the process is."
+        )
     return cfg
+
 
 def render_noise_controls() -> dict[str, any]:
     cfg = {}
     cols = st.columns(4)
     with cols[0]:
-        cfg["beta"] = st.slider("β (Color)", 0.0, 2.0, 1.0, 0.1, format="%.1f")
+        cfg["beta"] = st.slider(
+            "β (Color)", 
+            0.0, 2.0, 1.0, 0.1, format="%.1f",
+            help="Controls the spectral slope of the noise. 0 = white, 1 = pink, 2 = brownian."
+        )
     with cols[1]:
-        cfg["mean"] = st.slider("Mean", -5.0, 5.0, 0.0, 0.1)
+        cfg["mean"] = st.slider(
+            "Mean", 
+            -5.0, 5.0, 0.0, 0.1,
+            help="Center value around which noise is distributed."
+        )
     with cols[2]:
-        cfg["std"] = st.slider("Std Dev", 0.1, 5.0, 1.0, 0.1)
+        cfg["std"] = st.slider(
+            "Std Dev", 
+            0.1, 5.0, 1.0, 0.1,
+            help="Spread (volatility) of the noise values."
+        )
     with cols[3]:
-        cfg["drift"] = st.slider("Drift", -0.2, 0.2, 0.0, 0.01)
+        cfg["drift"] = st.slider(
+            "Drift", 
+            -0.2, 0.2, 0.0, 0.01,
+            help="Adds a constant upward or downward trend over time."
+        )
     return cfg
 
 def render_custom_series_controls() -> dict[str, any]:
@@ -113,22 +142,40 @@ def render_data_and_time_controls() -> dict[str, any]:
     with st.expander("Data & Time"):
         cols = st.columns([1, 1, 1, 2, 1, 1])
         with cols[0]:
-            num_points = st.number_input("Data Points", 10, 10000, 300, step=10)
+            num_points = st.number_input(
+                "Data Points", 
+                10, 10000, 300, step=10,
+                help="Total number of time steps to generate."
+            )
         with cols[1]:
-            rand_seed = st.number_input("Rand Seed", 0, 100, 42, step=1)
+            rand_seed = st.number_input(
+                "Rand Seed", 
+                0, 100, 42, step=1,
+                help="Random seed used for generating the time series (does not affect missing values)."
+            )
         with cols[2]:
-            allow_negative = st.checkbox("Allow Neg", value=True)
+            allow_negative = st.checkbox(
+                "Allow Neg", value=True,
+                help="If unchecked, values will be shifted to be non-negative."
+            )
         with cols[3]:
-            start_time = st.text_input("Starting Timestamp", value="2000-01-01 00:00:00")
+            start_time = st.text_input(
+                "Starting Timestamp", value="2000-01-01 00:00:00",
+                help="Start time for the generated series (format: 'YYYY-MM-DD HH:MM:SS')."
+            )
         with cols[4]:
-            time_interval = st.number_input("Interval", min_value=1, value=60, step=1)
+            time_interval = st.number_input(
+                "Interval", min_value=1, value=60, step=1,
+                help="Number of time units between each data point."
+            )
         with cols[5]:
-            # interval_unit = st.selectbox("Interval Unit", options=["ms", "s", "min", "h", "D"], index=1)
-            interval_unit = st.selectbox("Interval Unit", options=["ms", "s", "min", "h", "D"],
-                                        format_func=lambda x: {
-                                            "ms": "ms", "s": "sec", "min": "min", 
-                                            "h": "hr", "D": "day"}.get(x, x)
-                                        )
+            interval_unit = st.selectbox(
+                "Interval Unit", options=["ms", "s", "min", "h", "D"],
+                format_func=lambda x: {
+                    "ms": "ms", "s": "sec", "min": "min", 
+                    "h": "hr", "D": "day"}.get(x, x),
+                help="Time unit for the interval between steps."
+            )
 
     return {
         "num_points": num_points,
@@ -143,11 +190,20 @@ def render_missing_data_controls() -> dict[str, any]:
     with st.expander("Missing Values"):
         cols = st.columns([1, 1, 1])
         with cols[0]:
-            missing_pct = st.slider("Missing Data (%)", 0.0, 40.0, 0.0, step=0.5)
+            missing_pct = st.slider(
+                "Missing Data (%)", 0.0, 40.0, 0.0, step=0.5,
+                help="Percentage of values to randomly remove from the series."
+            )
         with cols[1]:
-            missing_seed = st.number_input("MV Rand Seed", 0, 100, 42, step=1)
+            missing_seed = st.number_input(
+                "MV Rand Seed", 0, 100, 42, step=1,
+                help="Random seed for missing values (does not affect time series generation)."
+            )
         with cols[2]:
-            missing_fill_method = st.selectbox("Fill Method", options=[f.value for f in FillMethod])
+            missing_fill_method = st.selectbox(
+                "Fill Method", options=[f.value for f in FillMethod],
+                help="Choose how to fill in missing values. Forward fill: fill with last known value."
+            )
     return {
         "missing_pct": missing_pct,
         "missing_seed": missing_seed,
@@ -160,24 +216,41 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
 
         cols = st.columns([0.8, 1, 0.5, 1])
         with cols[0]:
-            anomaly_type = st.selectbox("Anomaly Type", [a.value for a in AnomalyType])
+            anomaly_type = st.selectbox(
+                "Anomaly Type",
+                [a.value for a in AnomalyType]
+            )
             cfg["anomaly_type"] = anomaly_type
 
             if anomaly_type == AnomalyType.VALUE_SPIKE.value:
                         
                 with cols[1]:
-                    idx_range = st.slider("Range (index)", 0, num_points - 1, (int(num_points * 0.3), int(num_points * 0.4)))
+                    idx_range = st.slider(
+                        "Range (index)", 
+                        0, num_points - 1, 
+                        (int(num_points * 0.3), int(num_points * 0.4)),
+                        help="Index range of the anomaly. Must span at least one point."
+                    )
                 with cols[2]:
-                    anomaly_mode = st.selectbox("Mode", ["Mult", "Add"], index=0)
+                    anomaly_mode = st.selectbox(
+                        "Mode", 
+                        ["Mult", "Add"], 
+                        index=0,
+                        help="Multiplicative (scale values) or Additive (offset values) anomaly."
+                    )
                 with cols[3]:
-                    magnitude = st.slider("Magnitude (% of original)", -300.0, 300.0, 100.0, step=10.0)
-                
+                    magnitude = st.slider(
+                        "Magnitude (% of original)", 
+                        -300.0, 300.0, 100.0, step=10.0,
+                        help="How strong the anomaly is. Negative values reduce the original signal."
+                    )
                 
                 cfg["range"] = idx_range
                 cfg["mode"] = anomaly_mode
                 cfg["magnitude_pct"] = magnitude
 
         return cfg
+
 
 # --- Styling ---
 with open("styles.css") as f:
@@ -194,7 +267,16 @@ left_col, spacer, right_col = st.columns([5, 0.5, 5])
 with left_col:
     st.markdown('<div class="boxed-title">Visual Time Series Generator</div>', unsafe_allow_html=True)
 
-    st.markdown("Generate univariate time series data. Optionally save in .csv format.")
+    st.markdown(
+        "##### Generate univariate time series data using a visual approach.\n\n"
+        "Choose from:\n"
+        "- **Noise**: Colored random noise with optional drift\n"
+        "- **OU Process** – Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
+        "- **Custom**: Combine trend, seasonality, cycles, and noise components\n\n"
+        "Optionally add missing values, apply simple fill methods, and inject labeled anomalies.\n\n"
+        "Files saved as .csv will contain `timestamp, value, missing, anomaly`, "
+        "where `missing` and `anomaly` are boolean flags."
+    )
 
     with st.expander("Time Series", expanded=True):
 
@@ -250,6 +332,8 @@ with right_col:
         col: st.column_config.NumberColumn(col, width="small") for col in colnames
     }
 
+
+    st.markdown("Series summary statistics:")
     st.dataframe(
     summary_df,
     use_container_width=False,
