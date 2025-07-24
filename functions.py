@@ -117,9 +117,11 @@ def generate_ts(config):
         if min_val < 0:
             data = data - min_val
 
+    orig_missing = np.zeros(num_points, dtype=int)  # 0 = present, 1 = originally missing
     if global_cfg["missing_pct"] > 0:
         rng_missing = np.random.default_rng(global_cfg["missing_seed"])
         mask = rng_missing.random(num_points) < (global_cfg["missing_pct"] / 100)
+        orig_missing[mask] = 1
         data[mask] = np.nan
 
     missing_fill_method = global_cfg["missing_fill_method"]
@@ -155,7 +157,12 @@ def generate_ts(config):
             elif mode == "Add":
                 data[anomaly_indices] += pct * 10
 
-    return pd.DataFrame({"timestamp": timestamps, "value": data, "anomaly": labels})
+    return pd.DataFrame({
+        "timestamp": timestamps,
+        "value": data,
+        "orig_missing": orig_missing,
+        "anomaly": labels
+    })
 
 def summarize_series(series: pd.Series) -> pd.DataFrame:
     stats = {

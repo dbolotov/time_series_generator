@@ -333,6 +333,7 @@ with right_col:
     }
 
 
+
     st.markdown("Series summary statistics:")
     st.dataframe(
     summary_df,
