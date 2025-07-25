@@ -274,8 +274,10 @@ with left_col:
         "- **OU Process** – Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
         "- **Custom**: Combine trend, seasonality, cycles, and noise components\n\n"
         "Optionally add missing values, apply simple fill methods, and inject labeled anomalies.\n\n"
-        "Files saved as .csv will contain `timestamp, value, missing, anomaly`, "
-        "where `missing` and `anomaly` are boolean flags."
+        "Files saved as .csv will contain `timestamp, value, value_raw, orig_missing, anomaly`. "
+        "`value_raw` is the raw value before adding missing values, fills, and anomalies.\n"
+        "`orig_missing` is a boolean for whether the data was originally missing.\n"
+        ""
     )
 
     with st.expander("Time Series", expanded=True):

@@ -111,12 +111,15 @@ def generate_ts(config):
     elif series_type == SeriesType.CUSTOM.value:
         data = generate_custom_series(num_points, config["custom"], rng)
 
-
     if not global_cfg["allow_negative"]:
         min_val = np.min(data)
         if min_val < 0:
             data = data - min_val
 
+    # Store raw data
+    value_raw = pd.Series(data.copy())
+
+    # Add missing values
     orig_missing = np.zeros(num_points, dtype=int)  # 0 = present, 1 = originally missing
     if global_cfg["missing_pct"] > 0:
         rng_missing = np.random.default_rng(global_cfg["missing_seed"])
@@ -124,6 +127,7 @@ def generate_ts(config):
         orig_missing[mask] = 1
         data[mask] = np.nan
 
+    # Fill missing values
     missing_fill_method = global_cfg["missing_fill_method"]
     if missing_fill_method == FillMethod.FORWARD.value:
         data = pd.Series(data).ffill().to_numpy()
@@ -157,12 +161,15 @@ def generate_ts(config):
             elif mode == "Add":
                 data[anomaly_indices] += pct * 10
 
-    return pd.DataFrame({
+    df = pd.DataFrame({
         "timestamp": timestamps,
-        "value": data,
+        "value": data,                # the filled values
+        "value_raw": value_raw,       # the original version with NaNs
         "orig_missing": orig_missing,
         "anomaly": labels
     })
+
+    return(df)
 
 def summarize_series(series: pd.Series) -> pd.DataFrame:
     stats = {
@@ -176,15 +183,75 @@ def summarize_series(series: pd.Series) -> pd.DataFrame:
     return pd.DataFrame([stats]).round(3)
 
 
+def _add_overlay_blocks(fig, df, column_name, timestamps_col, color, label, opacity=0.3):
+    """
+    Add overlay blocks for missing values and anomalies during plots
+    """
+    mask = df[column_name] == 1
+    indices = mask[mask].index
+
+    if indices.empty:
+        return
+
+    # Find contiguous index runs
+    runs = []
+    start_idx = indices[0]
+
+    for i in range(1, len(indices)):
+        if indices[i] != indices[i - 1] + 1:
+            runs.append((start_idx, indices[i - 1]))
+            start_idx = indices[i]
+    runs.append((start_idx, indices[-1]))
+
+    for start, end in runs:
+        x0 = df[timestamps_col].iloc[start - 1] if start > 0 else df[timestamps_col].iloc[start]
+        x1 = df[timestamps_col].iloc[end + 1] if end + 1 < len(df) else df[timestamps_col].iloc[end]
+
+        fig.add_shape(
+            type="rect",
+            xref="x", yref="paper",
+            x0=x0, x1=x1,
+            y0=0, y1=1,
+            line=dict(width=0),
+            fillcolor=color,
+            opacity=opacity,
+            layer="below"
+        )
+
+    # Dummy trace for legend
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode="markers",
+        marker=dict(size=6, color=color, symbol="square"),
+        name=label
+    ))
+
+
 def plot_series(df: pd.DataFrame, series_type: str) -> go.Figure:
+
+    # colors
+    main_color = "#D2671A"
+    anomaly_color = "#D96A52"
+    missing_color = "#5FBCD1"
+
+    overlay_opacity = 0.3
+
     fig = go.Figure()
+
+    # --- Main series line ---
     fig.add_trace(go.Scatter(
         x=df["timestamp"],
         y=df["value"],
         mode="lines",
         name=series_type,
-        line=dict(width=1, color="#D2671A"),
+        line=dict(width=1, color=main_color),
     ))
+
+    _add_overlay_blocks(fig, df, "anomaly", "timestamp", anomaly_color, "Anomaly", overlay_opacity)
+    _add_overlay_blocks(fig, df, "orig_missing", "timestamp", missing_color, "Orig Missing", overlay_opacity)
+
+
+    # --- Layout ---
     fig.update_layout(
         title="Generated Series",
         height=500,
@@ -192,5 +259,13 @@ def plot_series(df: pd.DataFrame, series_type: str) -> go.Figure:
         yaxis_title="Value",
         xaxis=dict(showgrid=True),
         yaxis=dict(showgrid=True),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0
+        )
     )
+
     return fig
