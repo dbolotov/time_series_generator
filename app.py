@@ -53,13 +53,13 @@ def render_noise_controls() -> dict[str, any]:
         cfg["mean"] = st.slider(
             "Mean", 
             -5.0, 5.0, 0.0, 0.1,
-            help="Center value around which noise is distributed."
+            help="Average value of the noise."
         )
     with cols[2]:
         cfg["std"] = st.slider(
             "Std Dev", 
             0.1, 5.0, 1.0, 0.1,
-            help="Spread (volatility) of the noise values."
+            help="Standard deviation (volatility) of the noise."
         )
     with cols[3]:
         cfg["drift"] = st.slider(
@@ -75,67 +75,91 @@ def render_custom_series_controls() -> dict[str, any]:
     # Trend settings
     cols = st.columns(4)
     with cols[0]:
-        trend_type = st.selectbox("Trend", options=[t.value for t in TrendType])
+        trend_type = st.selectbox(
+            "Trend", 
+            options=[t.value for t in TrendType],
+            help="Adds long-term direction to the series."
+        )
         cfg["trend_type"] = trend_type
     if trend_type == TrendType.LINEAR.value:
         with cols[1]:
-            cfg["lin_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
+            cfg["lin_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0,
+                                             help="Starting value of the linear trend.")
         with cols[2]:
-            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.05, step=0.05)
+            cfg["lin_slope"] = st.slider("Slope", -1.0, 1.0, 0.05, step=0.01,
+                                         help="Rate of increase or decrease in the linear trend.")
     elif trend_type == TrendType.QUADRATIC.value:
         with cols[1]:
-            cfg["quad_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0)
+            cfg["quad_intercept"] = st.slider("Intercept", -10.0, 10.0, 0.0, step=1.0,
+                                              help="Starting value of the quadratic curve.")
         with cols[2]:
-            cfg["quad_coef"] = st.slider("Quadratic Coef", -0.002, 0.002, 0.001, step=0.0001, format="%.4f")
+            cfg["quad_coef"] = st.slider("Quadratic Coef", -0.002, 0.002, 0.001, step=0.0001, format="%.4f",
+                                         help="Controls the curvature of the quadratic trend.")
     elif trend_type == TrendType.EXPONENTIAL.value:
         with cols[1]:
-            cfg["exp_base"] = st.slider("Base", 1.000, 1.005, 1.001, step=0.001, format="%.3f")
+            cfg["exp_base"] = st.slider("Base", 1.000, 1.005, 1.001, step=0.001, format="%.3f",
+                                        help="Base of the exponential function (controls growth rate).")
         with cols[2]:
-            cfg["exp_scale"] = st.slider("Scale", 0.0, 10.0, 1.0, step=0.1)
+            cfg["exp_scale"] = st.slider("Scale", 0.0, 10.0, 1.0, step=0.1,
+                                         help="Scale factor for exponential growth.")
 
     # Seasonality settings
     cols = st.columns(4)
     with cols[0]:
-        seas_type = st.selectbox("Seasonality", options=[s.value for s in SeasonalityType])
+        seas_type = st.selectbox("Seasonality", options=[s.value for s in SeasonalityType],
+                                 help="Seasonal pattern.")
         cfg["seas_type"] = seas_type
     if seas_type != SeasonalityType.NONE.value:
         with cols[1]:
-            cfg["seas_amp"] = st.slider("Amplitude", 0.1, 10.0, 1.0, step=0.1)
+            cfg["seas_amp"] = st.slider("Amplitude", 0.1, 10.0, 1.0, step=0.1,
+                                        help="Height of the seasonal wave.")
         with cols[2]:
-            cfg["seas_period"] = st.slider("Period", 5, 200, 50, step=5)
+            cfg["seas_period"] = st.slider("Period", 5, 200, 50, step=5,
+                                           help="Number of steps before the season repeats.")
         with cols[3]:
             if seas_type == SeasonalityType.SAWTOOTH.value:
-                cfg["seas_width"] = st.slider("Wave Shape", 0.0, 1.0, 0.5, step=0.1)
+                cfg["seas_width"] = st.slider("Wave Shape", 0.0, 1.0, 0.5, step=0.1,
+                                              help="Skew of the sawtooth wave (0 = ramp up, 1 = ramp down).")
 
     # Cycle settings
     cols = st.columns([.25, .1875, .1875, .1875, .1875])
     with cols[0]:
-        cycle_enabled = st.checkbox("Cycle", value=False)
+        cycle_enabled = st.checkbox("Cycle", value=False,
+                                    help="Simulates cycles (rises and falls without a fixed frequency).")
         cfg["cycle_enabled"] = cycle_enabled
     if cycle_enabled:
         with cols[1]:
-            cfg["cyc_amp"] = st.slider("Amplitude", 0.0, 5.0, 1.0, 0.1, format="%.2f")
+            cfg["cyc_amp"] = st.slider("Amplitude", 0.0, 5.0, 1.0, 0.1, format="%.2f",
+                                       help="Cycle height.")
         with cols[2]:
-            cfg["cyc_freq"] = st.slider("Base Freq", 0.000, 0.1, 0.03, 0.005, format="%.3f")
+            cfg["cyc_freq"] = st.slider("Base Freq", 0.000, 0.1, 0.03, 0.005, format="%.3f",
+                                        help="Base frequency of the cycle.")
         with cols[3]:
-            cfg["cyc_var"] = st.slider("Freq Var", 0.0, 0.1, 0.01, 0.005, format="%.3f")
+            cfg["cyc_var"] = st.slider("Freq Var", 0.0, 0.1, 0.01, 0.005, format="%.3f",
+                                       help="Variation in frequency over time.")
         with cols[4]:
-            cfg["cyc_decay"] = st.slider("Decay Rate", -0.01, 0.01, 0.0, 0.0005, format="%.3f")
+            cfg["cyc_decay"] = st.slider("Decay Rate", -0.01, 0.01, 0.0, 0.0005, format="%.3f",
+                                         help="How quickly the cycle amplitude shrinks or grows.")
 
     # Noise settings
     cols = st.columns(4)
     with cols[0]:
-        noise_enabled = st.checkbox("Noise", value=False)
+        noise_enabled = st.checkbox("Noise", value=False,
+                                    help="Adds random fluctuations to simulate randomness.")
         cfg["noise_enabled"] = noise_enabled
     if noise_enabled:
         with cols[1]:
-            cfg["noise_beta"] = st.slider("β (Color)", 0.0, 2.0, 1.0, 0.1, format="%.1f")
+            cfg["noise_beta"] = st.slider("β (Color)", 0.0, 2.0, 1.0, 0.1, format="%.1f",
+                                          help="Controls the spectral slope of the noise. 0 = white, 1 = pink, 2 = brownian.")
         with cols[2]:
-            cfg["noise_mean"] = st.slider("Mean", -5.0, 5.0, 0.0, 0.1)
+            cfg["noise_mean"] = st.slider("Mean", -5.0, 5.0, 0.0, 0.1,
+                                          help="Average value of the noise.")
         with cols[3]:
-            cfg["noise_std"] = st.slider("Std Dev", 0.1, 5.0, 1.0, 0.1)
+            cfg["noise_std"] = st.slider("Std Dev", 0.1, 5.0, 1.0, 0.1,
+                                         help="Standard deviation (volatility) of the noise.")
 
     return cfg
+
 
 
 def render_data_and_time_controls() -> dict[str, any]:
@@ -258,21 +282,22 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
             )
             cfg["anomaly_type"] = anomaly_type
 
-            if anomaly_type == AnomalyType.VALUE_SPIKE.value:
+            if anomaly_type == AnomalyType.SPIKE_PLATEAU.value:
                         
                 with cols[1]:
                     idx_range = st.slider(
                         "Range (index)", 
-                        0, num_points - 1, 
+                        # 0, num_points - 1, 
+                        0, num_points, 
                         (int(num_points * 0.3), int(num_points * 0.4)),
                         help="Index range of the anomaly. Must span at least one point."
                     )
                 with cols[2]:
                     anomaly_mode = st.selectbox(
                         "Mode", 
-                        ["Mult", "Add"], 
+                        ["Add", "Mult"], 
                         index=0,
-                        help="Multiplicative (scale values) or Additive (offset values) anomaly."
+                        help="Additive (offset values) or Multiplicative (scale values) anomaly."
                     )
                 with cols[3]:
                     magnitude = st.slider(
@@ -337,16 +362,26 @@ with left_col:
 
     with st.expander("About", expanded=False):
         st.markdown(
-            "Choose from Time Series:\n"
-            "- **Noise**: Colored random noise with optional drift\n"
-            "- **OU Process** – Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
-            "- **Custom**: Combine trend, seasonality, cycles, and noise components\n\n"
-            "Optionally add missing values, apply simple fill methods, and inject labeled anomalies.\n\n"
-            "Files saved as .csv will contain `timestamp, value, value_raw, was_missing, anomaly`. "
+            "*Create and export custom time series for testing, teaching, or simulation. Add structure, missing values, and labeled anomalies*.\n\n"
+            "**Choose a time series**:\n"
+            "- Noise: Colored random noise with optional drift\n"
+            "- OU Process: Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
+            "- Custom: Combine trend, seasonality, cycles, and noise components\n\n"
+            "**Add missing values**: "
+            "Simulate gaps in data with optional clustering. Choose how to fill them.\n\n"
+            "**Add anomalies**: "
+            "Inject spikes or plateaus over a selected range. Use 'Add' for offsets or 'Mult' for scaling. To simulate a level shift, stretch the range to the end.\n\n"
+            "**Download as .csv**: "
+            "Saved file will contain the columns: `timestamp, value, value_raw, was_missing, anomaly`. "
             "`value_raw` is the original time series before any missing values, fills, or anomalies were applied.\n"
             "`was_missing` is a boolean indicating which values were masked out to simulate missing data (before any fill method was applied).\n"
-            ""
         )
+
+        st.markdown(
+            "*[View source code on GitHub](https://github.com/dbolotov/time_series_generator)*"
+        )
+
+
     with st.expander("Time Series", expanded=True):
 
         config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}

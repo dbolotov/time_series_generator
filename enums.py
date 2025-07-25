@@ -23,4 +23,4 @@ class SeasonalityType(str, Enum):
 
 class AnomalyType(str, Enum):
     NONE = "None"
-    VALUE_SPIKE = "Value Spike"
+    SPIKE_PLATEAU = "Spike / Plateau"

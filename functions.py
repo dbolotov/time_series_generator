@@ -7,18 +7,25 @@ import plotly.graph_objects as go
 
 from enums import SeriesType, TrendType, SeasonalityType, FillMethod, AnomalyType
 
+
 def generate_noise(num_points, beta, mean, std, drift, rng):
     noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=rng)
     noise = noise * std + mean
     drift_values = np.linspace(0, drift * (num_points - 1), num_points)
     return noise + drift_values
 
+
 def generate_ou_process(num_points, theta, mu, sigma, rng):
     dt = 1
     ou = np.zeros(num_points)
     for t in range(1, num_points):
-        ou[t] = ou[t-1] + theta * (mu - ou[t-1]) * dt + sigma * np.sqrt(dt) * rng.normal()
+        ou[t] = (
+            ou[t - 1]
+            + theta * (mu - ou[t - 1]) * dt
+            + sigma * np.sqrt(dt) * rng.normal()
+        )
     return ou
+
 
 def generate_cycle(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rate=0.0):
     t = np.arange(num_points)
@@ -37,6 +44,7 @@ def generate_cycle(num_points, amp=0.0, freq_base=0.00, freq_var=0.00, decay_rat
     cycle *= decay
 
     return cycle
+
 
 def generate_custom_series(num_points, cfg, rng):
     t = np.arange(num_points)
@@ -58,14 +66,16 @@ def generate_custom_series(num_points, cfg, rng):
     elif trend_type == TrendType.EXPONENTIAL.value:
         base = cfg.get("exp_base", 1.01)
         scale = cfg.get("exp_scale", 1.0)
-        y = scale * (base ** t)
+        y = scale * (base**t)
     else:
         y = np.zeros(num_points)
 
     if seas_type == SeasonalityType.SINE.value:
         seasonal = seas_amp * np.sin(2 * np.pi * t / seas_period)
     elif seas_type == SeasonalityType.SAWTOOTH.value:
-        seasonal = seas_amp * signal.sawtooth(2 * np.pi * t / seas_period, width=seas_width)
+        seasonal = seas_amp * signal.sawtooth(
+            2 * np.pi * t / seas_period, width=seas_width
+        )
     else:
         seasonal = 0
 
@@ -77,7 +87,7 @@ def generate_custom_series(num_points, cfg, rng):
             cfg.get("cyc_amp", 1.0),
             cfg.get("cyc_freq", 0.03),
             cfg.get("cyc_var", 0.01),
-            cfg.get("cyc_decay", 0.0)
+            cfg.get("cyc_decay", 0.0),
         )
         y += cycle
 
@@ -95,7 +105,10 @@ def generate_custom_series(num_points, cfg, rng):
 
     return y
 
-def generate_missing_mask(num_points: int, missing_pct: float, clustering: float, seed: int) -> np.ndarray:
+
+def generate_missing_mask(
+    num_points: int, missing_pct: float, clustering: float, seed: int
+) -> np.ndarray:
     """
     Returns a boolean mask with missing values placed to reflect gap clustering.
     """
@@ -107,7 +120,9 @@ def generate_missing_mask(num_points: int, missing_pct: float, clustering: float
         return mask
 
     # Parameters for clustering behavior
-    avg_run_length = max(1, int(1 + clustering * 20))  # Longer stretches for higher clustering
+    avg_run_length = max(
+        1, int(1 + clustering * 20)
+    )  # Longer stretches for higher clustering
     placed = 0
     attempts = 0
     max_attempts = num_points * 2
@@ -128,6 +143,27 @@ def generate_missing_mask(num_points: int, missing_pct: float, clustering: float
     return mask
 
 
+
+def apply_anomalies(data: np.ndarray, cfg: dict, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    anomaly_type = cfg.get("anomaly_type", AnomalyType.NONE.value)
+
+    if anomaly_type == AnomalyType.SPIKE_PLATEAU.value:
+        start, end = cfg.get("range", (0, 0))
+        pct = cfg.get("magnitude_pct", 100.0) / 100.0
+        mode = cfg.get("mode", "Mult")
+
+        if end > start:
+            anomaly_indices = np.arange(start, end)
+            labels[anomaly_indices] = 1
+
+            if mode == "Mult":
+                data[anomaly_indices] *= (1 + pct)
+            elif mode == "Add":
+                data[anomaly_indices] += pct * 10
+
+    return data, labels
+
+
 def generate_ts(config):
     global_cfg = config["global"]
     rng = np.random.default_rng(global_cfg["rand_seed"])
@@ -137,7 +173,9 @@ def generate_ts(config):
 
     if series_type == SeriesType.NOISE.value:
         p = config["noise"]
-        data = generate_noise(num_points, p["beta"], p["mean"], p["std"], p["drift"], rng)
+        data = generate_noise(
+            num_points, p["beta"], p["mean"], p["std"], p["drift"], rng
+        )
     elif series_type == SeriesType.OU_PROCESS.value:
         p = config["ou"]
         data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"], rng)
@@ -154,11 +192,6 @@ def generate_ts(config):
 
     # Add missing values
     was_missing = np.zeros(num_points, dtype=int)  # 0 = present, 1 = originally missing
-    # if global_cfg["missing_pct"] > 0:
-    #     rng_missing = np.random.default_rng(global_cfg["missing_seed"])
-    #     mask = rng_missing.random(num_points) < (global_cfg["missing_pct"] / 100)
-    #     was_missing[mask] = 1
-    #     data[mask] = np.nan
 
     missing_pct = global_cfg.get("missing_pct", 0.0)
     clustering = global_cfg.get("gap_clustering", 0.0)
@@ -168,7 +201,7 @@ def generate_ts(config):
             num_points=num_points,
             missing_pct=missing_pct,
             clustering=clustering,
-            seed=global_cfg["missing_seed"]
+            seed=global_cfg["missing_seed"],
         )
         was_missing[is_missing] = 1
         data[is_missing] = np.nan
@@ -184,38 +217,47 @@ def generate_ts(config):
     interval = global_cfg["time_interval"]
     # timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
     unit = global_cfg.get("interval_unit", "s")
-    timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit))
+    timestamps = pd.date_range(
+        start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit)
+    )
 
-    labels = np.zeros(num_points, dtype=int)  # 0 = normal, 1 = anomaly
+    # labels = np.zeros(num_points, dtype=int)  # 0 = normal, 1 = anomaly
 
-    if global_cfg.get("anomaly_type") == AnomalyType.VALUE_SPIKE.value:
-        start, end = global_cfg.get("range", (0, 0))
-        pct = global_cfg.get("magnitude_pct", 100.0) / 100.0
-        mode = global_cfg.get("mode", "Mult")
+    # if global_cfg.get("anomaly_type") == AnomalyType.SPIKE_PLATEAU.value:
+    #     start, end = global_cfg.get("range", (0, 0))
+    #     pct = global_cfg.get("magnitude_pct", 100.0) / 100.0
+    #     mode = global_cfg.get("mode", "Mult")
 
-        if end > start:
-            anomaly_indices = np.arange(start, end)
-            labels[anomaly_indices] = 1
+    #     if end > start:
+    #         anomaly_indices = np.arange(start, end)
+    #         labels[anomaly_indices] = 1
 
-        if end > start:
-            anomaly_indices = np.arange(start, end)
-            labels[anomaly_indices] = 1
+    #     if end > start:
+    #         anomaly_indices = np.arange(start, end)
+    #         labels[anomaly_indices] = 1
 
-            if mode == "Mult":
-                data[anomaly_indices] *= (1 + pct)
+    #         if mode == "Mult":
+    #             data[anomaly_indices] *= 1 + pct
 
-            elif mode == "Add":
-                data[anomaly_indices] += pct * 10
+    #         elif mode == "Add":
+    #             data[anomaly_indices] += pct * 10
 
-    df = pd.DataFrame({
-        "timestamp": timestamps,
-        "value": data,                # the filled values
-        "value_raw": value_raw,       # the original version with NaNs
-        "was_missing": was_missing,
-        "anomaly": labels
-    })
+    labels = np.zeros(num_points, dtype=int)
+    data, labels = apply_anomalies(data, global_cfg, labels)
 
-    return(df)
+
+    df = pd.DataFrame(
+        {
+            "timestamp": timestamps,
+            "value": data,  # the filled values
+            "value_raw": value_raw,  # the original version with NaNs
+            "was_missing": was_missing,
+            "anomaly": labels,
+        }
+    )
+
+    return df
+
 
 def summarize_series(series: pd.Series) -> pd.DataFrame:
     stats = {
@@ -223,13 +265,15 @@ def summarize_series(series: pd.Series) -> pd.DataFrame:
         "Std Dev": series.std(),
         "Min": series.min(),
         "Max": series.max(),
-        "Skewness": skew(series, nan_policy='omit'),
-        "Kurtosis": kurtosis(series, nan_policy='omit'),
+        "Skewness": skew(series, nan_policy="omit"),
+        "Kurtosis": kurtosis(series, nan_policy="omit"),
     }
     return pd.DataFrame([stats]).round(3)
 
 
-def _add_overlay_blocks(fig, df, column_name, timestamps_col, color, label, opacity=0.3):
+def _add_overlay_blocks(
+    fig, df, column_name, timestamps_col, color, label, opacity=0.3
+):
     """
     Add overlay blocks for missing values and anomalies during plots
     """
@@ -250,27 +294,41 @@ def _add_overlay_blocks(fig, df, column_name, timestamps_col, color, label, opac
     runs.append((start_idx, indices[-1]))
 
     for start, end in runs:
-        x0 = df[timestamps_col].iloc[start - 1] if start > 0 else df[timestamps_col].iloc[start]
-        x1 = df[timestamps_col].iloc[end + 1] if end + 1 < len(df) else df[timestamps_col].iloc[end]
+        x0 = (
+            df[timestamps_col].iloc[start - 1]
+            if start > 0
+            else df[timestamps_col].iloc[start]
+        )
+        x1 = (
+            df[timestamps_col].iloc[end + 1]
+            if end + 1 < len(df)
+            else df[timestamps_col].iloc[end]
+        )
 
         fig.add_shape(
             type="rect",
-            xref="x", yref="paper",
-            x0=x0, x1=x1,
-            y0=0, y1=1,
+            xref="x",
+            yref="paper",
+            x0=x0,
+            x1=x1,
+            y0=0,
+            y1=1,
             line=dict(width=0),
             fillcolor=color,
             opacity=opacity,
-            layer="below"
+            layer="below",
         )
 
     # Dummy trace for legend
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode="markers",
-        marker=dict(size=6, color=color, symbol="square"),
-        name=label
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode="markers",
+            marker=dict(size=6, color=color, symbol="square"),
+            name=label,
+        )
+    )
 
 
 def plot_series(df: pd.DataFrame, series_type: str, settings: dict) -> go.Figure:
@@ -285,20 +343,40 @@ def plot_series(df: pd.DataFrame, series_type: str, settings: dict) -> go.Figure
     fig = go.Figure()
 
     # --- Main series line ---
-    fig.add_trace(go.Scatter(
-        x=df["timestamp"],
-        y=df["value"],
-        mode="lines" if settings["use_lines"] else "markers",
-        name=series_type,
-        line=dict(width=1, color=main_color),
-        marker=dict(size=4) if not settings["use_lines"] else None,
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=df["timestamp"],
+            y=df["value"],
+            mode="lines" if settings["use_lines"] else "markers",
+            name=series_type,
+            line=dict(width=1, color=main_color),
+            marker=dict(size=4) if not settings["use_lines"] else None,
+        )
+    )
 
-    if settings.get("show_anomalies") and "anomaly" in df.columns and df["anomaly"].any():
-        _add_overlay_blocks(fig, df, "anomaly", "timestamp", anomaly_color, "Anomaly", overlay_opacity)
+    if (
+        settings.get("show_anomalies")
+        and "anomaly" in df.columns
+        and df["anomaly"].any()
+    ):
+        _add_overlay_blocks(
+            fig, df, "anomaly", "timestamp", anomaly_color, "Anomaly", overlay_opacity
+        )
 
-    if settings.get("show_missing") and "was_missing" in df.columns and df["was_missing"].any():
-        _add_overlay_blocks(fig, df, "was_missing", "timestamp", missing_color, "Orig Missing", overlay_opacity)
+    if (
+        settings.get("show_missing")
+        and "was_missing" in df.columns
+        and df["was_missing"].any()
+    ):
+        _add_overlay_blocks(
+            fig,
+            df,
+            "was_missing",
+            "timestamp",
+            missing_color,
+            "Missing",
+            overlay_opacity,
+        )
 
     # --- Layout ---
     fig.update_layout(
@@ -308,13 +386,7 @@ def plot_series(df: pd.DataFrame, series_type: str, settings: dict) -> go.Figure
         yaxis_title="Value",
         xaxis=dict(showgrid=True),
         yaxis=dict(showgrid=True),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="left",
-            x=0
-        )
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     )
 
     return fig
