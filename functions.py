@@ -95,6 +95,39 @@ def generate_custom_series(num_points, cfg, rng):
 
     return y
 
+def generate_missing_mask(num_points: int, missing_pct: float, clustering: float, seed: int) -> np.ndarray:
+    """
+    Returns a boolean mask with missing values placed to reflect gap clustering.
+    """
+    rng = np.random.default_rng(seed)
+    n_missing = int(num_points * missing_pct / 100.0)
+    mask = np.zeros(num_points, dtype=bool)
+
+    if n_missing == 0:
+        return mask
+
+    # Parameters for clustering behavior
+    avg_run_length = max(1, int(1 + clustering * 20))  # Longer stretches for higher clustering
+    placed = 0
+    attempts = 0
+    max_attempts = num_points * 2
+
+    while placed < n_missing and attempts < max_attempts:
+        start = rng.integers(0, num_points)
+        run_length = rng.integers(1, avg_run_length + 1)
+        end = min(start + run_length, num_points)
+
+        for i in range(start, end):
+            if not mask[i]:
+                mask[i] = True
+                placed += 1
+                if placed >= n_missing:
+                    break
+        attempts += 1
+
+    return mask
+
+
 def generate_ts(config):
     global_cfg = config["global"]
     rng = np.random.default_rng(global_cfg["rand_seed"])
@@ -120,12 +153,25 @@ def generate_ts(config):
     value_raw = pd.Series(data.copy())
 
     # Add missing values
-    orig_missing = np.zeros(num_points, dtype=int)  # 0 = present, 1 = originally missing
-    if global_cfg["missing_pct"] > 0:
-        rng_missing = np.random.default_rng(global_cfg["missing_seed"])
-        mask = rng_missing.random(num_points) < (global_cfg["missing_pct"] / 100)
-        orig_missing[mask] = 1
-        data[mask] = np.nan
+    was_missing = np.zeros(num_points, dtype=int)  # 0 = present, 1 = originally missing
+    # if global_cfg["missing_pct"] > 0:
+    #     rng_missing = np.random.default_rng(global_cfg["missing_seed"])
+    #     mask = rng_missing.random(num_points) < (global_cfg["missing_pct"] / 100)
+    #     was_missing[mask] = 1
+    #     data[mask] = np.nan
+
+    missing_pct = global_cfg.get("missing_pct", 0.0)
+    clustering = global_cfg.get("gap_clustering", 0.0)
+
+    if missing_pct > 0:
+        is_missing = generate_missing_mask(
+            num_points=num_points,
+            missing_pct=missing_pct,
+            clustering=clustering,
+            seed=global_cfg["missing_seed"]
+        )
+        was_missing[is_missing] = 1
+        data[is_missing] = np.nan
 
     # Fill missing values
     missing_fill_method = global_cfg["missing_fill_method"]
@@ -165,7 +211,7 @@ def generate_ts(config):
         "timestamp": timestamps,
         "value": data,                # the filled values
         "value_raw": value_raw,       # the original version with NaNs
-        "orig_missing": orig_missing,
+        "was_missing": was_missing,
         "anomaly": labels
     })
 
@@ -251,8 +297,8 @@ def plot_series(df: pd.DataFrame, series_type: str, settings: dict) -> go.Figure
     if settings.get("show_anomalies") and "anomaly" in df.columns and df["anomaly"].any():
         _add_overlay_blocks(fig, df, "anomaly", "timestamp", anomaly_color, "Anomaly", overlay_opacity)
 
-    if settings.get("show_missing") and "orig_missing" in df.columns and df["orig_missing"].any():
-        _add_overlay_blocks(fig, df, "orig_missing", "timestamp", missing_color, "Orig Missing", overlay_opacity)
+    if settings.get("show_missing") and "was_missing" in df.columns and df["was_missing"].any():
+        _add_overlay_blocks(fig, df, "was_missing", "timestamp", missing_color, "Orig Missing", overlay_opacity)
 
     # --- Layout ---
     fig.update_layout(

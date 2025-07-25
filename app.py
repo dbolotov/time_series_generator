@@ -186,29 +186,65 @@ def render_data_and_time_controls() -> dict[str, any]:
         "interval_unit": interval_unit
     }
 
+# def render_missing_data_controls() -> dict[str, any]:
+#     with st.expander("Missing Values"):
+#         cols = st.columns([1, 1, 1])
+#         with cols[0]:
+#             missing_pct = st.slider(
+#                 "Missing Data (%)", 0.0, 90.0, 0.0, step=0.5,
+#                 help="Percentage of values to randomly remove from the series."
+#             )
+#         with cols[1]:
+#             missing_seed = st.number_input(
+#                 "MV Rand Seed", 0, 100, 42, step=1,
+#                 help="Random seed for missing values (does not affect time series generation)."
+#             )
+#         with cols[2]:
+#             missing_fill_method = st.selectbox(
+#                 "Fill Method", options=[f.value for f in FillMethod],
+#                 help="Choose how to fill in missing values. Forward fill: fill with last known value."
+#             )
+#     return {
+#         "missing_pct": missing_pct,
+#         "missing_seed": missing_seed,
+#         "missing_fill_method": missing_fill_method,
+#     }
+
 def render_missing_data_controls() -> dict[str, any]:
     with st.expander("Missing Values"):
-        cols = st.columns([1, 1, 1])
+        cols = st.columns([1, 1, 1, 1])
         with cols[0]:
             missing_pct = st.slider(
-                "Missing Data (%)", 0.0, 40.0, 0.0, step=0.5,
+                "Missing Data (%)", 0.0, 50.0, 0.0, step=0.5,
                 help="Percentage of values to randomly remove from the series."
             )
         with cols[1]:
+            clustering = st.slider(
+                "Gap Clustering", 0.0, 1.0, 0.0, step=0.01,
+                help="Controls how likely missing values are to appear in contiguous blocks.\n\n"
+                    "0 = completely random, 1 = long stretches of missing values."
+            )
+        with cols[2]:
             missing_seed = st.number_input(
                 "MV Rand Seed", 0, 100, 42, step=1,
                 help="Random seed for missing values (does not affect time series generation)."
             )
-        with cols[2]:
+        with cols[3]:
             missing_fill_method = st.selectbox(
                 "Fill Method", options=[f.value for f in FillMethod],
                 help="Choose how to fill in missing values. Forward fill: fill with last known value."
             )
+
+ 
+
     return {
         "missing_pct": missing_pct,
         "missing_seed": missing_seed,
         "missing_fill_method": missing_fill_method,
+        "gap_clustering": clustering,
     }
+
+
 
 def render_anomaly_controls(num_points) -> dict[str, any]:
     with st.expander("Anomalies"):
@@ -306,9 +342,9 @@ with left_col:
             "- **OU Process** – Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
             "- **Custom**: Combine trend, seasonality, cycles, and noise components\n\n"
             "Optionally add missing values, apply simple fill methods, and inject labeled anomalies.\n\n"
-            "Files saved as .csv will contain `timestamp, value, value_raw, orig_missing, anomaly`. "
-            "`value_raw` is the raw value before adding missing values, fills, and anomalies.\n"
-            "`orig_missing` is a boolean for whether the data was originally missing.\n"
+            "Files saved as .csv will contain `timestamp, value, value_raw, was_missing, anomaly`. "
+            "`value_raw` is the original time series before any missing values, fills, or anomalies were applied.\n"
+            "`was_missing` is a boolean indicating which values were masked out to simulate missing data (before any fill method was applied).\n"
             ""
         )
     with st.expander("Time Series", expanded=True):
