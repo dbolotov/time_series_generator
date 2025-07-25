@@ -442,10 +442,10 @@ with right_col:
 
     st.markdown("Series summary statistics:")
     st.dataframe(
-    summary_df,
-    use_container_width=False,
-    hide_index=True,
-    column_config=column_config,
+        summary_df,
+        use_container_width=False,
+        hide_index=True,
+        column_config=column_config,
     )
     
 
