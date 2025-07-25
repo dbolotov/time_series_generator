@@ -227,7 +227,7 @@ def _add_overlay_blocks(fig, df, column_name, timestamps_col, color, label, opac
     ))
 
 
-def plot_series(df: pd.DataFrame, series_type: str) -> go.Figure:
+def plot_series(df: pd.DataFrame, series_type: str, settings: dict) -> go.Figure:
 
     # colors
     main_color = "#D2671A"
@@ -242,14 +242,17 @@ def plot_series(df: pd.DataFrame, series_type: str) -> go.Figure:
     fig.add_trace(go.Scatter(
         x=df["timestamp"],
         y=df["value"],
-        mode="lines",
+        mode="lines" if settings["use_lines"] else "markers",
         name=series_type,
         line=dict(width=1, color=main_color),
+        marker=dict(size=4) if not settings["use_lines"] else None,
     ))
 
-    _add_overlay_blocks(fig, df, "anomaly", "timestamp", anomaly_color, "Anomaly", overlay_opacity)
-    _add_overlay_blocks(fig, df, "orig_missing", "timestamp", missing_color, "Orig Missing", overlay_opacity)
+    if settings.get("show_anomalies") and "anomaly" in df.columns and df["anomaly"].any():
+        _add_overlay_blocks(fig, df, "anomaly", "timestamp", anomaly_color, "Anomaly", overlay_opacity)
 
+    if settings.get("show_missing") and "orig_missing" in df.columns and df["orig_missing"].any():
+        _add_overlay_blocks(fig, df, "orig_missing", "timestamp", missing_color, "Orig Missing", overlay_opacity)
 
     # --- Layout ---
     fig.update_layout(

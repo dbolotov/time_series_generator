@@ -251,6 +251,34 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
 
         return cfg
 
+def render_plot_settings() -> dict:
+    with st.expander("Plot Settings"):
+        cols = st.columns([0.6, 1, 1, 0.8])
+        with cols[0]:
+            use_lines = st.checkbox(
+                "Line plot",
+                value=True,
+                help="Connect data points with lines instead of showing individual markers."
+            )
+        with cols[1]:
+            show_missing = st.checkbox(
+                "Missing values overlay",
+                value=True,
+                help="Highlight regions where missing values were added."
+            )
+        with cols[2]:
+            show_anomalies = st.checkbox(
+                "Anomalies overlay",
+                value=True,
+                help="Highlight regions where anomalies were added."
+            )
+
+    return {
+        "use_lines": use_lines,
+        "show_anomalies": show_anomalies,
+        "show_missing": show_missing,
+    }
+
 
 # --- Styling ---
 with open("styles.css") as f:
@@ -268,18 +296,21 @@ with left_col:
     st.markdown('<div class="boxed-title">Visual Time Series Generator</div>', unsafe_allow_html=True)
 
     st.markdown(
-        "##### Generate univariate time series data using a visual approach.\n\n"
-        "Choose from:\n"
-        "- **Noise**: Colored random noise with optional drift\n"
-        "- **OU Process** – Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
-        "- **Custom**: Combine trend, seasonality, cycles, and noise components\n\n"
-        "Optionally add missing values, apply simple fill methods, and inject labeled anomalies.\n\n"
-        "Files saved as .csv will contain `timestamp, value, value_raw, orig_missing, anomaly`. "
-        "`value_raw` is the raw value before adding missing values, fills, and anomalies.\n"
-        "`orig_missing` is a boolean for whether the data was originally missing.\n"
-        ""
+        "##### Generate univariate time series data using a visual approach."
     )
 
+    with st.expander("About", expanded=False):
+        st.markdown(
+            "Choose from Time Series:\n"
+            "- **Noise**: Colored random noise with optional drift\n"
+            "- **OU Process** – Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
+            "- **Custom**: Combine trend, seasonality, cycles, and noise components\n\n"
+            "Optionally add missing values, apply simple fill methods, and inject labeled anomalies.\n\n"
+            "Files saved as .csv will contain `timestamp, value, value_raw, orig_missing, anomaly`. "
+            "`value_raw` is the raw value before adding missing values, fills, and anomalies.\n"
+            "`orig_missing` is a boolean for whether the data was originally missing.\n"
+            ""
+        )
     with st.expander("Time Series", expanded=True):
 
         config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
@@ -317,12 +348,14 @@ with left_col:
     if config["global"]["series_type"] == SeriesType.CUSTOM.value:
         config["custom"]["rand_seed"] = config["global"]["rand_seed"]
     
+    plot_settings = render_plot_settings()
+    
 
 with right_col:
 
     df = generate_ts(config)
 
-    fig = plot_series(df, series_type)
+    fig = plot_series(df, series_type, plot_settings)
 
     st.plotly_chart(fig, use_container_width=True)
 
