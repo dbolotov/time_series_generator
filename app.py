@@ -175,7 +175,7 @@ def render_data_and_time_controls() -> dict[str, any]:
             rand_seed = st.number_input(
                 "Rand Seed", 
                 0, 100, 42, step=1,
-                help="Random seed used for generating the time series (does not affect missing values)."
+                help="Random seed used for generating the time series and anomaly noise. Missing values use a separate seed."
             )
         with cols[2]:
             allow_negative = st.checkbox(
@@ -210,29 +210,6 @@ def render_data_and_time_controls() -> dict[str, any]:
         "interval_unit": interval_unit
     }
 
-# def render_missing_data_controls() -> dict[str, any]:
-#     with st.expander("Missing Values"):
-#         cols = st.columns([1, 1, 1])
-#         with cols[0]:
-#             missing_pct = st.slider(
-#                 "Missing Data (%)", 0.0, 90.0, 0.0, step=0.5,
-#                 help="Percentage of values to randomly remove from the series."
-#             )
-#         with cols[1]:
-#             missing_seed = st.number_input(
-#                 "MV Rand Seed", 0, 100, 42, step=1,
-#                 help="Random seed for missing values (does not affect time series generation)."
-#             )
-#         with cols[2]:
-#             missing_fill_method = st.selectbox(
-#                 "Fill Method", options=[f.value for f in FillMethod],
-#                 help="Choose how to fill in missing values. Forward fill: fill with last known value."
-#             )
-#     return {
-#         "missing_pct": missing_pct,
-#         "missing_seed": missing_seed,
-#         "missing_fill_method": missing_fill_method,
-#     }
 
 def render_missing_data_controls() -> dict[str, any]:
     with st.expander("Missing Values"):
@@ -269,12 +246,11 @@ def render_missing_data_controls() -> dict[str, any]:
     }
 
 
-
 def render_anomaly_controls(num_points) -> dict[str, any]:
     with st.expander("Anomalies"):
         cfg = {}
 
-        cols = st.columns([0.8, 1, 0.5, 1])
+        cols = st.columns([0.8, 0.9, 0.5, 0.6, 0.6])
         with cols[0]:
             anomaly_type = st.selectbox(
                 "Anomaly Type",
@@ -282,35 +258,55 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
             )
             cfg["anomaly_type"] = anomaly_type
 
-            if anomaly_type == AnomalyType.SPIKE_PLATEAU.value:
+            if anomaly_type == AnomalyType.CUSTOM.value:
                         
                 with cols[1]:
                     idx_range = st.slider(
                         "Range (index)", 
-                        # 0, num_points - 1, 
                         0, num_points, 
                         (int(num_points * 0.3), int(num_points * 0.4)),
-                        help="Index range of the anomaly. Must span at least one point."
+                        help="Index range of the anomaly. Must span at least one point. "
+                             "To simulate a level shift or trend change, stretch the range toward the end."
                     )
                 with cols[2]:
                     anomaly_mode = st.selectbox(
                         "Mode", 
-                        ["Add", "Mult"], 
+                        ["Add", "Mult", "Slope"], 
                         index=0,
-                        help="Additive (offset values) or Multiplicative (scale values) anomaly."
+                        help="Choose how values are modified. "
+                             "'Add' offsets values, 'Mult' scales them, 'Slope' applies a linear ramp."
                     )
                 with cols[3]:
-                    magnitude = st.slider(
-                        "Magnitude (% of original)", 
-                        -300.0, 300.0, 100.0, step=10.0,
-                        help="How strong the anomaly is. Negative values reduce the original signal."
-                    )
-                
+                    if anomaly_mode in ["Add", "Mult"]:
+                        magnitude = st.slider(
+                            "Magnitude (%)", 
+                            -300.0, 300.0, 100.0, step=10.0,
+                            help="Magnitude of the anomaly, as percentage of the original signal."
+                        )
+                        cfg["magnitude_pct"] = magnitude
+
+                    elif anomaly_mode == "Slope":
+                        slope = st.slider(
+                            "Slope", 
+                            -1.0, 1.0, 0.1, step=0.01,
+                            help="Slope applied across the selected range. "
+                                 "Positive = upward trend, negative = downward trend."
+                        )
+                        cfg["slope"] = slope
+
+                # Add noise slider (always shown when anomaly is selected)
+                with cols[4]:
+                    noise_std = st.slider(
+                        "Noise Std", 
+                        0.0, 3.0, 0.0, step=0.1,
+                        help="Amount of random noise to inject in the selected range.")
+                    cfg["noise_std"] = noise_std
+
                 cfg["range"] = idx_range
                 cfg["mode"] = anomaly_mode
-                cfg["magnitude_pct"] = magnitude
 
         return cfg
+
 
 def render_plot_settings() -> dict:
     with st.expander("Plot Settings"):
@@ -362,7 +358,7 @@ with left_col:
 
     with st.expander("About", expanded=False):
         st.markdown(
-            "*Create and export custom time series for testing, teaching, or simulation. Add structure, missing values, and labeled anomalies*.\n\n"
+            "*Create and export custom time series for testing, teaching, or simulation. Add structure, missing values, and labeled anomalies.*\n\n"
             "**Choose a time series**:\n"
             "- Noise: Colored random noise with optional drift\n"
             "- OU Process: Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
@@ -370,12 +366,16 @@ with left_col:
             "**Add missing values**: "
             "Simulate gaps in data with optional clustering. Choose how to fill them.\n\n"
             "**Add anomalies**: "
-            "Inject spikes or plateaus over a selected range. Use 'Add' for offsets or 'Mult' for scaling. To simulate a level shift, stretch the range to the end.\n\n"
+            "Use the 'Custom' anomaly block to apply controlled distortions over a selected range. "
+            "Choose an effect type: additive (offset), multiplicative (scaling), or slope (trend). "
+            "You can also inject random noise to simulate unstable behavior. "
+            "To simulate a level shift or trend change, stretch the anomaly range to either end of the series.\n\n"
             "**Download as .csv**: "
             "Saved file will contain the columns: `timestamp, value, value_raw, was_missing, anomaly`. "
             "`value_raw` is the original time series before any missing values, fills, or anomalies were applied.\n"
             "`was_missing` is a boolean indicating which values were masked out to simulate missing data (before any fill method was applied).\n"
         )
+
 
         st.markdown(
             "*[View source code on GitHub](https://github.com/dbolotov/time_series_generator)*"
@@ -432,7 +432,6 @@ with right_col:
 
     summary_df = summarize_series(df["value"])
 
-    # column_names = ["Mean", "Std Dev", "Min", "Max", "Skewness", "Kurtosis"]
     colnames = summary_df.columns.tolist()
     column_config = {
         col: st.column_config.NumberColumn(col, width="small") for col in colnames

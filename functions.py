@@ -144,13 +144,41 @@ def generate_missing_mask(
 
 
 
-def apply_anomalies(data: np.ndarray, cfg: dict, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+# def apply_anomalies(data: np.ndarray, cfg: dict, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+#     anomaly_type = cfg.get("anomaly_type", AnomalyType.NONE.value)
+
+#     if anomaly_type == AnomalyType.CUSTOM.value:
+#         start, end = cfg.get("range", (0, 0))
+#         pct = cfg.get("magnitude_pct", 100.0) / 100.0
+#         mode = cfg.get("mode", "Mult")
+
+#         if end > start:
+#             anomaly_indices = np.arange(start, end)
+#             labels[anomaly_indices] = 1
+
+#             if mode == "Mult":
+#                 data[anomaly_indices] *= (1 + pct)
+#             elif mode == "Add":
+#                 data[anomaly_indices] += pct * 10
+
+#     return data, labels
+
+
+def apply_anomalies(
+    data: np.ndarray,
+    cfg: dict,
+    labels: np.ndarray,
+    rng: np.random.Generator
+) -> tuple[np.ndarray, np.ndarray]:
+    
     anomaly_type = cfg.get("anomaly_type", AnomalyType.NONE.value)
 
-    if anomaly_type == AnomalyType.SPIKE_PLATEAU.value:
+    if anomaly_type == AnomalyType.CUSTOM.value:
         start, end = cfg.get("range", (0, 0))
-        pct = cfg.get("magnitude_pct", 100.0) / 100.0
         mode = cfg.get("mode", "Mult")
+        noise_std = cfg.get("noise_std", 0.0)
+        slope = cfg.get("slope", 0.0)  # default even if not used
+        pct = cfg.get("magnitude_pct", 100.0) / 100.0 if mode in ["Add", "Mult"] else 0.0
 
         if end > start:
             anomaly_indices = np.arange(start, end)
@@ -160,8 +188,16 @@ def apply_anomalies(data: np.ndarray, cfg: dict, labels: np.ndarray) -> tuple[np
                 data[anomaly_indices] *= (1 + pct)
             elif mode == "Add":
                 data[anomaly_indices] += pct * 10
+            elif mode == "Slope":
+                for i, idx in enumerate(anomaly_indices):
+                    data[idx] += slope * i
+
+            if noise_std > 0:
+                noise = rng.normal(loc=0.0, scale=noise_std, size=len(anomaly_indices))
+                data[anomaly_indices] += noise
 
     return data, labels
+
 
 
 def generate_ts(config):
@@ -221,29 +257,9 @@ def generate_ts(config):
         start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit)
     )
 
-    # labels = np.zeros(num_points, dtype=int)  # 0 = normal, 1 = anomaly
-
-    # if global_cfg.get("anomaly_type") == AnomalyType.SPIKE_PLATEAU.value:
-    #     start, end = global_cfg.get("range", (0, 0))
-    #     pct = global_cfg.get("magnitude_pct", 100.0) / 100.0
-    #     mode = global_cfg.get("mode", "Mult")
-
-    #     if end > start:
-    #         anomaly_indices = np.arange(start, end)
-    #         labels[anomaly_indices] = 1
-
-    #     if end > start:
-    #         anomaly_indices = np.arange(start, end)
-    #         labels[anomaly_indices] = 1
-
-    #         if mode == "Mult":
-    #             data[anomaly_indices] *= 1 + pct
-
-    #         elif mode == "Add":
-    #             data[anomaly_indices] += pct * 10
 
     labels = np.zeros(num_points, dtype=int)
-    data, labels = apply_anomalies(data, global_cfg, labels)
+    data, labels = apply_anomalies(data, global_cfg, labels, rng)
 
 
     df = pd.DataFrame(
@@ -309,24 +325,17 @@ def _add_overlay_blocks(
         )
 
         fig.add_shape(
-            type="rect",
-            xref="x",
-            yref="paper",
-            x0=x0,
-            x1=x1,
-            y0=0,
-            y1=1,
+            type="rect", xref="x", yref="paper",
+            x0=x0, x1=x1, y0=0, y1=1,
             line=dict(width=0),
-            fillcolor=color,
-            opacity=opacity,
+            fillcolor=color, opacity=opacity,
             layer="below",
         )
 
     # Dummy trace for legend
     fig.add_trace(
         go.Scatter(
-            x=[None],
-            y=[None],
+            x=[None], y=[None],
             mode="markers",
             marker=dict(size=6, color=color, symbol="square"),
             name=label,
