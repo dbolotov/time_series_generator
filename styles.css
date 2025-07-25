@@ -20,16 +20,31 @@
     margin-bottom: 0.5rem;
 }
 
-/* --- Title Box --- */
-.boxed-title {
+/*.boxed-title {
     border: 3px solid #4B9DAF;
     padding: 0.2rem 1rem;
-    border-radius: 0.0rem;
+    border-radius: 0.31rem;
     display: inline-block;
     font-size: 2.6rem;
     font-weight: 600;
     color: #333;
     margin-bottom: 1rem;
+} */
+
+
+/* --- Title Box --- */
+.boxed-title {
+    background-color: #003B4F;
+    color: #FFFDF5;
+    padding: 0.5rem 1rem;
+    border-radius: 0.31rem;
+    display: inline-block;
+    font-size: 2.6rem;
+    font-weight: 600;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    /* font-family: "Courier New", monospace; */
+    margin-bottom: 1rem;
+    border: none;
 }
 
 /* --- Download Button --- */
