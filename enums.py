@@ -24,3 +24,9 @@ class SeasonalityType(str, Enum):
 class AnomalyType(str, Enum):
     NONE = "None"
     CUSTOM = "Custom"
+
+class MissingMode(str, Enum):
+    NONE = "None"
+    CLUSTER = "Clustered"
+    NTH = "Every N"
+    CLIP = "Clip"

@@ -5,7 +5,7 @@ from scipy.stats import skew, kurtosis
 import colorednoise
 import plotly.graph_objects as go
 
-from enums import SeriesType, TrendType, SeasonalityType, FillMethod, AnomalyType
+from enums import SeriesType, TrendType, SeasonalityType, FillMethod, AnomalyType, MissingMode
 
 
 def generate_noise(num_points, beta, mean, std, drift, rng):
@@ -143,27 +143,6 @@ def generate_missing_mask(
     return mask
 
 
-
-# def apply_anomalies(data: np.ndarray, cfg: dict, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-#     anomaly_type = cfg.get("anomaly_type", AnomalyType.NONE.value)
-
-#     if anomaly_type == AnomalyType.CUSTOM.value:
-#         start, end = cfg.get("range", (0, 0))
-#         pct = cfg.get("magnitude_pct", 100.0) / 100.0
-#         mode = cfg.get("mode", "Mult")
-
-#         if end > start:
-#             anomaly_indices = np.arange(start, end)
-#             labels[anomaly_indices] = 1
-
-#             if mode == "Mult":
-#                 data[anomaly_indices] *= (1 + pct)
-#             elif mode == "Add":
-#                 data[anomaly_indices] += pct * 10
-
-#     return data, labels
-
-
 def apply_anomalies(
     data: np.ndarray,
     cfg: dict,
@@ -199,78 +178,98 @@ def apply_anomalies(
     return data, labels
 
 
-
 def generate_ts(config):
     global_cfg = config["global"]
     rng = np.random.default_rng(global_cfg["rand_seed"])
     num_points = global_cfg["num_points"]
-
     series_type = global_cfg["series_type"]
 
+    # --- Generate series ---
     if series_type == SeriesType.NOISE.value:
         p = config["noise"]
-        data = generate_noise(
-            num_points, p["beta"], p["mean"], p["std"], p["drift"], rng
-        )
+        data = generate_noise(num_points, p["beta"], p["mean"], p["std"], p["drift"], rng)
     elif series_type == SeriesType.OU_PROCESS.value:
         p = config["ou"]
         data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"], rng)
     elif series_type == SeriesType.CUSTOM.value:
         data = generate_custom_series(num_points, config["custom"], rng)
 
+    # --- Make positive if needed ---
     if not global_cfg["allow_negative"]:
         min_val = np.min(data)
         if min_val < 0:
             data = data - min_val
 
-    # Store raw data
+    # --- Store raw before masking ---
     value_raw = pd.Series(data.copy())
-
-    # Add missing values
     was_missing = np.zeros(num_points, dtype=int)  # 0 = present, 1 = originally missing
 
-    missing_pct = global_cfg.get("missing_pct", 0.0)
-    clustering = global_cfg.get("gap_clustering", 0.0)
+    # --- Apply missing values ---
+    missing_mode = global_cfg.get("missing_mode", "None")
 
-    if missing_pct > 0:
-        is_missing = generate_missing_mask(
-            num_points=num_points,
-            missing_pct=missing_pct,
-            clustering=clustering,
-            seed=global_cfg["missing_seed"],
-        )
+    if missing_mode == "Clustered":
+        pct = global_cfg.get("missing_pct", 0.0)
+        cluster = global_cfg.get("gap_clustering", 0.0)
+        seed = global_cfg.get("missing_seed", 42)
+
+        if pct > 0:
+            is_missing = generate_missing_mask(num_points, pct, cluster, seed)
+            was_missing[is_missing] = 1
+            data[is_missing] = np.nan
+
+    elif missing_mode == "Every N":
+        n = global_cfg.get("nth_value", 10)
+        span = global_cfg.get("nth_span", 1)
+        is_missing = np.zeros(num_points, dtype=bool)
+
+        for i in range(n - 1, num_points, n):
+            end = min(i + span, num_points)
+            is_missing[i:end] = True
+
         was_missing[is_missing] = 1
         data[is_missing] = np.nan
 
-    # Fill missing values
-    missing_fill_method = global_cfg["missing_fill_method"]
-    if missing_fill_method == FillMethod.FORWARD.value:
+    elif missing_mode == "Clip":
+        threshold = global_cfg.get("clip_threshold", 10.0)
+        direction = global_cfg.get("clip_direction", "High")
+
+        if direction == "High":
+            is_missing = data > threshold
+        elif direction == "Low":
+            is_missing = data < threshold
+        elif direction == "Both":
+            is_missing = (data > threshold) | (data < -threshold)
+        else:
+            is_missing = np.zeros(num_points, dtype=bool)
+
+        was_missing[is_missing] = 1
+        data[is_missing] = np.nan
+
+    # --- Fill missing values ---
+    fill_method = global_cfg.get("missing_fill_method", "Forward")
+    if fill_method == FillMethod.FORWARD.value:
         data = pd.Series(data).ffill().to_numpy()
-    elif missing_fill_method == FillMethod.ZERO.value:
+    elif fill_method == FillMethod.ZERO.value:
         data = pd.Series(data).fillna(0).to_numpy()
 
+    # --- Generate timestamps ---
     start = pd.to_datetime(global_cfg["start_time"])
     interval = global_cfg["time_interval"]
-    # timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit='s'))
     unit = global_cfg.get("interval_unit", "s")
-    timestamps = pd.date_range(
-        start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit)
-    )
+    timestamps = pd.date_range(start=start, periods=num_points, freq=pd.to_timedelta(interval, unit=unit))
 
-
+    # --- Anomalies ---
     labels = np.zeros(num_points, dtype=int)
     data, labels = apply_anomalies(data, global_cfg, labels, rng)
 
-
-    df = pd.DataFrame(
-        {
-            "timestamp": timestamps,
-            "value": data,  # the filled values
-            "value_raw": value_raw,  # the original version with NaNs
-            "was_missing": was_missing,
-            "anomaly": labels,
-        }
-    )
+    # --- Assemble dataframe ---
+    df = pd.DataFrame({
+        "timestamp": timestamps,
+        "value": data,
+        "value_raw": value_raw,
+        "was_missing": was_missing,
+        "anomaly": labels,
+    })
 
     return df
 

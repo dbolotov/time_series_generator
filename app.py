@@ -7,7 +7,7 @@ from scipy.stats import skew, kurtosis
 from scipy import signal
 import colorednoise
 
-from enums import SeriesType, FillMethod, TrendType, SeasonalityType, AnomalyType
+from enums import SeriesType, FillMethod, TrendType, SeasonalityType, AnomalyType, MissingMode
 
 from functions import (
     generate_ts,
@@ -211,39 +211,91 @@ def render_data_and_time_controls() -> dict[str, any]:
     }
 
 
+
 def render_missing_data_controls() -> dict[str, any]:
+    cfg = {}
+
     with st.expander("Missing Values"):
-        cols = st.columns([1, 1, 1, 1])
+        cols = st.columns([1, 0.3])
         with cols[0]:
-            missing_pct = st.slider(
-                "Missing Data (%)", 0.0, 50.0, 0.0, step=0.5,
-                help="Percentage of values to randomly remove from the series."
-            )
+            mode_cols = st.columns([1,1,1,0.7])
+            with mode_cols[0]:
+                missing_mode = st.selectbox(
+                    "Mode", options=[m.value for m in MissingMode], index=0, 
+                    help="Choose the type of missing data pattern to apply."
+                )
+            cfg["missing_mode"] = missing_mode
+
+            if missing_mode == MissingMode.CLUSTER.value:
+                with mode_cols[1]:
+                    missing_pct = st.slider(
+                        "Missing Data (%)", 0.0, 50.0, 0.0, step=0.5,
+                        help="Percentage of values to randomly remove from the series."
+                    )
+                with mode_cols[2]:
+                    clustering = st.slider(
+                        "Gap Clustering", 0.0, 1.0, 0.0, step=0.01,
+                        help="Controls how likely missing values are to appear in contiguous blocks.\n\n"
+                            "0 = completely random, 1 = long stretches of missing values."
+                    )
+                with mode_cols[3]:
+                    missing_seed = st.number_input(
+                        "MV Seed", 0, 100, 42, step=1,
+                        help="Random seed for missing values (does not affect time series generation)."
+                    )
+                cfg.update({
+                    "missing_pct": missing_pct,
+                    "gap_clustering": clustering,
+                    "missing_seed": missing_seed,
+                })
+
+            elif missing_mode == MissingMode.NTH.value:
+                with mode_cols[1]:
+                    nth_value = st.number_input(
+                        "Every Nth", 2, 100, 10, step=1,
+                        help="Mask every Nth value in the time series."
+                    )
+                with mode_cols[2]:
+                    span = st.number_input(
+                        "Span", 1, nth_value, 1, step=1,
+                        help="Number of consecutive values to mask at each step."
+                    )
+                with mode_cols[3]:
+                    missing_seed = st.number_input(
+                        "MV Rand Seed", 0, 1000, 42, step=1,
+                        help="Random seed for missing values (does not affect time series generation)."
+                    )
+                cfg.update({
+                    "nth_value": nth_value,
+                    "nth_span": span,
+                    "missing_seed": missing_seed,
+                })
+
+            elif missing_mode == MissingMode.CLIP.value:
+                with mode_cols[1]:
+                    threshold = st.number_input(
+                        "Clip Threshold", 0.0, 1e6, 10.0, step=1.0,
+                        help="Cutoff value for masking."
+                    )
+                with mode_cols[2]:
+                    direction = st.selectbox(
+                        "Direction", ["High", "Low", "Both"],
+                        help="Choose to mask high, low values, or both."
+                    )
+                cfg.update({
+                    "clip_threshold": threshold,
+                    "clip_direction": direction,
+                })
+
+        # Fill method (shown regardless of mode)
         with cols[1]:
-            clustering = st.slider(
-                "Gap Clustering", 0.0, 1.0, 0.0, step=0.01,
-                help="Controls how likely missing values are to appear in contiguous blocks.\n\n"
-                    "0 = completely random, 1 = long stretches of missing values."
-            )
-        with cols[2]:
-            missing_seed = st.number_input(
-                "MV Rand Seed", 0, 100, 42, step=1,
-                help="Random seed for missing values (does not affect time series generation)."
-            )
-        with cols[3]:
             missing_fill_method = st.selectbox(
                 "Fill Method", options=[f.value for f in FillMethod],
                 help="Choose how to fill in missing values. Forward fill: fill with last known value."
             )
+        cfg["missing_fill_method"] = missing_fill_method
 
- 
-
-    return {
-        "missing_pct": missing_pct,
-        "missing_seed": missing_seed,
-        "missing_fill_method": missing_fill_method,
-        "gap_clustering": clustering,
-    }
+    return cfg
 
 
 def render_anomaly_controls(num_points) -> dict[str, any]:
