@@ -336,6 +336,9 @@ def render_plot_settings() -> dict:
         "show_missing": show_missing,
     }
 
+def load_markdown(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
 # --- Styling ---
 with open("styles.css") as f:
@@ -357,39 +360,33 @@ with left_col:
     )
 
     with st.expander("About", expanded=False):
-        st.markdown(
-            "*Create and export custom time series for testing, teaching, or simulation. Add structure, missing values, and labeled anomalies.*\n\n"
-            "**Choose a time series**:\n"
-            "- Noise: Colored random noise with optional drift\n"
-            "- OU Process: Mean-reverting stochastic process (Ornstein–Uhlenbeck)\n"
-            "- Custom: Combine trend, seasonality, cycles, and noise components\n\n"
-            "**Add missing values**: "
-            "Simulate gaps in data with optional clustering. Choose how to fill them.\n\n"
-            "**Add anomalies**: "
-            "Use the 'Custom' anomaly block to apply controlled distortions over a selected range. "
-            "Choose an effect type: additive (offset), multiplicative (scaling), or slope (trend). "
-            "You can also inject random noise to simulate unstable behavior. "
-            "To simulate a level shift or trend change, stretch the anomaly range to either end of the series.\n\n"
-            "**Download as .csv**: "
-            "Saved file will contain the columns: `timestamp, value, value_raw, was_missing, anomaly`. "
-            "`value_raw` is the original time series before any missing values, fills, or anomalies were applied.\n"
-            "`was_missing` is a boolean indicating which values were masked out to simulate missing data (before any fill method was applied).\n"
-        )
+        tab_overview, tab_noise, tab_ou, tab_custom, tab_missing, tab_anomalies, tab_save = st.tabs([
+            "Overview", "Noise", "OU Process", "Custom TS", "Missing Values", "Anomalies", "Save to File"
+        ])
 
-
-        st.markdown(
-            "*[View source code on GitHub](https://github.com/dbolotov/time_series_generator)*"
-        )
-
+        with tab_overview:
+            st.markdown(load_markdown("docs/overview.md"))
+        with tab_noise:
+            st.markdown(load_markdown("docs/noise.md"))
+        with tab_ou:
+            st.markdown(load_markdown("docs/ou_process.md"))
+        with tab_custom:
+            st.markdown(load_markdown("docs/custom_ts.md"))
+        with tab_missing:
+            st.markdown(load_markdown("docs/missing_values.md"))
+        with tab_anomalies:
+            st.markdown(load_markdown("docs/anomalies.md"))
+        with tab_save:
+            st.markdown(load_markdown("docs/save.md"))
 
     with st.expander("Time Series", expanded=True):
 
         config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
 
-        cols = st.columns([1, 3.0])
+        cols = st.columns([0.8, 3.0])
 
         with cols[0]:
-            series_type = st.selectbox("Time Series Type", options=[s.value for s in SeriesType])
+            series_type = st.selectbox("Type", options=[s.value for s in SeriesType])
         config["global"]["series_type"] = series_type
 
         with cols[1]:
