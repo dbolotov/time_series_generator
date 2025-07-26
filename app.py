@@ -346,9 +346,12 @@ with open("styles.css") as f:
 
 
 # --- Layout and Page Config ---
-st.set_page_config(layout="wide")
-
-# st.markdown('<div class="boxed-title">Visual Time Series Generator</div>', unsafe_allow_html=True)
+st.set_page_config(
+    layout="wide",
+    page_title="Visual Time Series Generator",
+    page_icon="images/favicon.png"
+)
+# st.set_page_config()
 
 left_col, spacer, right_col = st.columns([5, 0.5, 5])
 
