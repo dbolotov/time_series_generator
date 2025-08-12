@@ -414,7 +414,7 @@ with left_col:
         "##### Generate univariate time series data using a visual approach."
     )
 
-    with st.expander("About", expanded=False):
+    with st.expander("Documentation", expanded=False):
         tab_overview, tab_noise, tab_ou, tab_custom, tab_missing, tab_anomalies, tab_save = st.tabs([
             "Overview", "Noise", "OU Process", "Custom TS", "Missing Values", "Anomalies", "Save to File"
         ])
