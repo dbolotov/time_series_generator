@@ -173,7 +173,7 @@ def render_data_and_time_controls() -> dict[str, any]:
             )
         with cols[1]:
             rand_seed = st.number_input(
-                "Rand Seed", 
+                "Seed", 
                 0, 100, 42, step=1,
                 help="Random seed used for generating the time series and anomaly noise. Missing values use a separate seed."
             )
@@ -240,7 +240,7 @@ def render_missing_data_controls() -> dict[str, any]:
                     )
                 with mode_cols[3]:
                     missing_seed = st.number_input(
-                        "MV Seed", 0, 100, 42, step=1,
+                        "Seed", 0, 100, 42, step=1,
                         help="Random seed for missing values (does not affect time series generation)."
                     )
                 cfg.update({
@@ -262,7 +262,7 @@ def render_missing_data_controls() -> dict[str, any]:
                     )
                 with mode_cols[3]:
                     missing_seed = st.number_input(
-                        "MV Rand Seed", 0, 1000, 42, step=1,
+                        "Seed", 0, 1000, 42, step=1,
                         help="Random seed for missing values (does not affect time series generation)."
                     )
                 cfg.update({
