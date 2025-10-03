@@ -434,7 +434,7 @@ with left_col:
         with tab_save:
             st.markdown(load_markdown("docs/save.md"))
 
-    with st.expander("Time Series", expanded=True):
+    with st.expander("Series Generator", expanded=True):
 
         config = {"global": {}, "ou": {}, "custom": {}, "noise": {}}
 
