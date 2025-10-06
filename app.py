@@ -222,7 +222,7 @@ def render_missing_data_controls() -> dict[str, any]:
             with mode_cols[0]:
                 missing_mode = st.selectbox(
                     "Mode", options=[m.value for m in MissingMode], index=0, 
-                    help="Choose the type of missing data pattern to apply."
+                    help="Type of missing data pattern to apply."
                 )
             cfg["missing_mode"] = missing_mode
 
@@ -235,7 +235,7 @@ def render_missing_data_controls() -> dict[str, any]:
                 with mode_cols[2]:
                     clustering = st.slider(
                         "Gap Clustering", 0.0, 1.0, 0.0, step=0.01,
-                        help="Controls how likely missing values are to appear in contiguous blocks.\n\n"
+                        help="How likely missing values are to appear in contiguous blocks.\n\n"
                             "0 = completely random, 1 = long stretches of missing values."
                     )
                 with mode_cols[3]:
@@ -280,7 +280,7 @@ def render_missing_data_controls() -> dict[str, any]:
                 with mode_cols[2]:
                     direction = st.selectbox(
                         "Direction", ["High", "Low", "Both"],
-                        help="Choose to mask high, low values, or both."
+                        help="Mask high, low values, or both."
                     )
                 cfg.update({
                     "clip_threshold": threshold,
@@ -291,7 +291,7 @@ def render_missing_data_controls() -> dict[str, any]:
         with cols[1]:
             missing_fill_method = st.selectbox(
                 "Fill Method", options=[f.value for f in FillMethod],
-                help="Choose how to fill in missing values. Forward fill: fill with last known value."
+                help="How to fill in missing values. Forward fill: fill with last known value."
             )
         cfg["missing_fill_method"] = missing_fill_method
 
@@ -325,7 +325,7 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
                         "Mode", 
                         ["Add", "Mult", "Slope"], 
                         index=0,
-                        help="Choose how values are modified. "
+                        help="How values are modified. "
                              "'Add' offsets values, 'Mult' scales them, 'Slope' applies a linear ramp."
                     )
                 with cols[3]:
