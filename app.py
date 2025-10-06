@@ -487,20 +487,15 @@ with right_col:
     summary_df = summarize_series(df["value"])
 
     colnames = summary_df.columns.tolist()
-    column_config = {
-        col: st.column_config.NumberColumn(col, width="small") for col in colnames
-    }
+    column_config = {col: st.column_config.NumberColumn(col, width=60) for col in colnames}
 
-
-
-    st.markdown("Series summary statistics:")
+    st.markdown("Series Summary Statistics:")
     st.dataframe(
         summary_df,
         use_container_width=False,
         hide_index=True,
         column_config=column_config,
     )
-    
 
     csv = df.to_csv(index=False).encode("utf-8")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

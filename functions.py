@@ -281,10 +281,10 @@ def summarize_series(series: pd.Series) -> pd.DataFrame:
         "Min": series.min(),
         "Max": series.max(),
         "Range": series.max() - series.min(),
-        "Skewness": skew(series, nan_policy="omit"),
+        "Skew": skew(series, nan_policy="omit"),
         "Kurtosis": kurtosis(series, nan_policy="omit"),
-        "ACF (lag 1)": series.autocorr(lag=1),
-        "0 Crossings": ((series.shift(1) - series.mean()) * (series - series.mean()) < 0).sum()
+        "ACF (1)": series.autocorr(lag=1),
+        "0 Cross": ((series.shift(1) - series.mean()) * (series - series.mean()) < 0).sum()
     }
     return pd.DataFrame([stats]).round(3)
 
