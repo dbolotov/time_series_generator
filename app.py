@@ -240,7 +240,7 @@ def render_missing_data_controls() -> dict[str, any]:
                     )
                 with mode_cols[3]:
                     missing_seed = st.number_input(
-                        "Seed", 0, 100, 42, step=1,
+                        "Seed", 0, 10000, 42, step=1,
                         help="Random seed for missing values (does not affect time series generation)."
                     )
                 cfg.update({
@@ -262,7 +262,7 @@ def render_missing_data_controls() -> dict[str, any]:
                     )
                 with mode_cols[3]:
                     missing_seed = st.number_input(
-                        "Seed", 0, 1000, 42, step=1,
+                        "Seed", 0, 10000, 42, step=1,
                         help="Random seed for missing values (does not affect time series generation)."
                     )
                 cfg.update({
