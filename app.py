@@ -287,14 +287,16 @@ def render_missing_data_controls() -> dict[str, any]:
                     "clip_direction": direction,
                 })
 
-        # Fill method (shown regardless of mode)
         with cols[1]:
-            missing_fill_method = st.selectbox(
-                "Fill Method", options=[f.value for f in FillMethod],
-                help="How to fill in missing values. Forward fill: fill with last known value."
-            )
-        cfg["missing_fill_method"] = missing_fill_method
-
+            if missing_mode != MissingMode.NONE.value:
+                missing_fill_method = st.selectbox(
+                    "Fill Method", 
+                    options=[f.value for f in FillMethod],
+                    help="How to fill in missing values. Forward fill: fill with last known value."
+                )
+            else:
+                missing_fill_method = FillMethod.NONE.value
+            
     return cfg
 
 
