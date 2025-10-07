@@ -194,11 +194,11 @@ def generate_ts(config):
     elif series_type == SeriesType.CUSTOM.value:
         data = generate_custom_series(num_points, config["custom"], rng)
 
-    # --- Make positive if needed ---
-    if not global_cfg["allow_negative"]:
-        min_val = np.min(data)
-        if min_val < 0:
-            data = data - min_val
+    # # --- Make positive if needed ---
+    # if not global_cfg["allow_negative"]:
+    #     min_val = np.min(data)
+    #     if min_val < 0:
+    #         data = data - min_val
 
     # --- Store raw before masking ---
     value_raw = pd.Series(data.copy())

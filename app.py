@@ -163,8 +163,8 @@ def render_custom_series_controls() -> dict[str, any]:
 
 
 def render_data_and_time_controls() -> dict[str, any]:
-    with st.expander("Data & Time"):
-        cols = st.columns([1, 1, 1, 2, 1, 1])
+    with st.expander("Data and Time Settings"):
+        cols = st.columns([1, 1, 2, 1, 1])
         with cols[0]:
             num_points = st.number_input(
                 "Data Points", 
@@ -177,22 +177,22 @@ def render_data_and_time_controls() -> dict[str, any]:
                 0, 100, 42, step=1,
                 help="Random seed used for generating the time series and anomaly noise. Missing values use a separate seed."
             )
+        # with cols[2]:
+        #     allow_negative = st.checkbox(
+        #         "Allow Neg", value=True,
+        #         help="If unchecked, values will be shifted to be non-negative."
+        #     )
         with cols[2]:
-            allow_negative = st.checkbox(
-                "Allow Neg", value=True,
-                help="If unchecked, values will be shifted to be non-negative."
-            )
-        with cols[3]:
             start_time = st.text_input(
                 "Starting Timestamp", value="2000-01-01 00:00:00",
                 help="Start time for the generated series (format: 'YYYY-MM-DD HH:MM:SS')."
             )
-        with cols[4]:
+        with cols[3]:
             time_interval = st.number_input(
                 "Interval", min_value=1, value=60, step=1,
                 help="Number of time units between each data point."
             )
-        with cols[5]:
+        with cols[4]:
             interval_unit = st.selectbox(
                 "Interval Unit", options=["ms", "s", "min", "h", "D"],
                 format_func=lambda x: {
@@ -204,7 +204,7 @@ def render_data_and_time_controls() -> dict[str, any]:
     return {
         "num_points": num_points,
         "rand_seed": rand_seed,
-        "allow_negative": allow_negative,
+        # "allow_negative": allow_negative,
         "start_time": start_time,
         "time_interval": time_interval,
         "interval_unit": interval_unit
