@@ -297,6 +297,8 @@ def render_missing_data_controls() -> dict[str, any]:
             else:
                 missing_fill_method = FillMethod.NONE.value
             
+            cfg["missing_fill_method"] = missing_fill_method
+            
     return cfg
 
 
@@ -417,8 +419,8 @@ with left_col:
     )
 
     with st.expander("Documentation", expanded=False):
-        tab_overview, tab_noise, tab_ou, tab_custom, tab_missing, tab_anomalies, tab_save = st.tabs([
-            "Overview", "Noise", "OU Process", "Custom TS", "Missing Values", "Anomalies", "Save to File"
+        tab_overview, tab_noise, tab_ou, tab_custom, tab_missing, tab_anomalies, tab_stats, tab_save = st.tabs([
+            "Overview", "Noise", "OU Process", "Custom TS", "Missing Values", "Anomalies", "Summary Statistics", "Download CSV" 
         ])
 
         with tab_overview:
@@ -433,6 +435,8 @@ with left_col:
             st.markdown(load_markdown("docs/missing_values.md"))
         with tab_anomalies:
             st.markdown(load_markdown("docs/anomalies.md"))
+        with tab_stats:
+            st.markdown(load_markdown("docs/summary_stats.md"))
         with tab_save:
             st.markdown(load_markdown("docs/save.md"))
 
@@ -489,7 +493,7 @@ with right_col:
     colnames = summary_df.columns.tolist()
     column_config = {col: st.column_config.NumberColumn(col, width=60) for col in colnames}
 
-    st.markdown("Series Summary Statistics:")
+    st.markdown("Summary Statistics:")
     st.dataframe(
         summary_df,
         use_container_width=False,
