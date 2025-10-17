@@ -13,3 +13,5 @@ The "color" of the noise refers to its spectral shape, which affects how values 
 - [**Pink noise**](https://en.wikipedia.org/wiki/Pink_noise) (β = 1, also called 1/f noise): Has more power at low frequencies, creating smoother, more correlated behavior. Use cases: Heartbeat signals, audio noise, natural processes like rainfall or river flows.
 - [**Brownian noise**](https://en.wikipedia.org/wiki/Brownian_noise) (β = 2, also called red noise): Very smooth and strongly correlated over time. Mimics the behavior of a random walk but is generated via spectral filtering to produce a 1/f² power spectrum. Use cases: Stock prices, climate records, cumulative effects over time.
 
+*Note: The generated noise is normalized so that the resulting series has approximately the specified mean and standard deviation.*
+

@@ -9,9 +9,19 @@ from enums import SeriesType, TrendType, SeasonalityType, FillMethod, AnomalyTyp
 
 
 def generate_noise(num_points, beta, mean, std, drift, rng):
+    # Generate raw colored noise (mean ≈ 0, std ≈ 1)
     noise = colorednoise.powerlaw_psd_gaussian(beta, num_points, random_state=rng)
+
+    # Normalize to zero mean and unit variance (so scaling and shifting below are exact)
+    noise = (noise - np.mean(noise)) / np.std(noise)
+
+    # Scale to desired std and shift to desired mean
     noise = noise * std + mean
+
+    # Add linear drift (unchanged)
     drift_values = np.linspace(0, drift * (num_points - 1), num_points)
+
+    # Combine
     return noise + drift_values
 
 
@@ -193,12 +203,6 @@ def generate_ts(config):
         data = generate_ou_process(num_points, p["theta"], p["mu"], p["sigma"], rng)
     elif series_type == SeriesType.CUSTOM.value:
         data = generate_custom_series(num_points, config["custom"], rng)
-
-    # # --- Make positive if needed ---
-    # if not global_cfg["allow_negative"]:
-    #     min_val = np.min(data)
-    #     if min_val < 0:
-    #         data = data - min_val
 
     # --- Store raw before masking ---
     value_raw = pd.Series(data.copy())
