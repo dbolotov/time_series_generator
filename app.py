@@ -21,19 +21,20 @@ def render_ou_controls() -> dict[str, any]:
     cols = st.columns(3)
     with cols[0]:
         cfg["theta"] = st.slider(
-            "θ (Mean reversion)", 
+            "θ (mean reversion)", 
             0.0, 1.0, 0.2, 0.001,
-            help="Speed at which values return to the long-term mean (μ). Higher = quicker reversion."
+            help="Speed at which values return to the long-term mean (μ).\n\n" \
+            "Higher = quicker reversion."
         )
     with cols[1]:
         cfg["mu"] = st.slider(
-            "μ (Long-term mean)", 
+            "μ (long-term mean)", 
             -10.0, 10.0, 0.0, 0.1,
             help="The average value the series tends to revert toward."
         )
     with cols[2]:
         cfg["sigma"] = st.slider(
-            "σ (Volatility)", 
+            "σ (standard deviation)", 
             0.01, 2.0, 0.3, 0.01,
             help="Controls how noisy or volatile the process is."
         )
@@ -47,7 +48,9 @@ def render_noise_controls() -> dict[str, any]:
         cfg["beta"] = st.slider(
             "β (Color)", 
             0.0, 2.0, 1.0, 0.1, format="%.1f",
-            help="Controls the spectral slope of the noise. 0 = white, 1 = pink, 2 = brownian."
+            help="Spectral slope (color) of the noise.\n\n"
+            "0 = more jagged\n\n" \
+            "2 = smoother"
         )
     with cols[1]:
         cfg["mean"] = st.slider(
@@ -59,7 +62,7 @@ def render_noise_controls() -> dict[str, any]:
         cfg["std"] = st.slider(
             "Std Dev", 
             0.1, 5.0, 1.0, 0.1,
-            help="Standard deviation (volatility) of the noise."
+            help="Standard deviation of the noise."
         )
     with cols[3]:
         cfg["drift"] = st.slider(
@@ -150,13 +153,15 @@ def render_custom_series_controls() -> dict[str, any]:
     if noise_enabled:
         with cols[1]:
             cfg["noise_beta"] = st.slider("β (Color)", 0.0, 2.0, 1.0, 0.1, format="%.1f",
-                                          help="Controls the spectral slope of the noise. 0 = white, 1 = pink, 2 = brownian.")
+                                          help="Spectral slope (color) of the noise.\n\n"
+                                                "0 = more jagged\n\n" \
+                                                "2 = smoother")
         with cols[2]:
             cfg["noise_mean"] = st.slider("Mean", -5.0, 5.0, 0.0, 0.1,
                                           help="Average value of the noise.")
         with cols[3]:
             cfg["noise_std"] = st.slider("Std Dev", 0.1, 5.0, 1.0, 0.1,
-                                         help="Standard deviation (volatility) of the noise.")
+                                         help="Standard deviation of the noise.")
 
     return cfg
 
@@ -175,17 +180,15 @@ def render_data_and_time_controls() -> dict[str, any]:
             rand_seed = st.number_input(
                 "Seed", 
                 0, 100, 42, step=1,
-                help="Random seed used for generating the time series and anomaly noise. Missing values use a separate seed."
+                help="Random seed used for generating the time series and anomaly noise.\n\n" \
+                "Missing values use a separate seed."
             )
-        # with cols[2]:
-        #     allow_negative = st.checkbox(
-        #         "Allow Neg", value=True,
-        #         help="If unchecked, values will be shifted to be non-negative."
-        #     )
+
         with cols[2]:
             start_time = st.text_input(
                 "Starting Timestamp", value="2000-01-01 00:00:00",
-                help="Start time for the generated series (format: 'YYYY-MM-DD HH:MM:SS')."
+                help="Start time for the generated series.\n\n" \
+                "Format: 'YYYY-MM-DD HH:MM:SS'."
             )
         with cols[3]:
             time_interval = st.number_input(
@@ -204,7 +207,6 @@ def render_data_and_time_controls() -> dict[str, any]:
     return {
         "num_points": num_points,
         "rand_seed": rand_seed,
-        # "allow_negative": allow_negative,
         "start_time": start_time,
         "time_interval": time_interval,
         "interval_unit": interval_unit
@@ -236,7 +238,8 @@ def render_missing_data_controls() -> dict[str, any]:
                     clustering = st.slider(
                         "Gap Clustering", 0.0, 1.0, 0.0, step=0.01,
                         help="How likely missing values are to appear in contiguous blocks.\n\n"
-                            "0 = completely random, 1 = long stretches of missing values."
+                            "0 = completely random\n\n" \
+                            "1 = long stretches of missing values"
                     )
                 with mode_cols[3]:
                     missing_seed = st.number_input(
@@ -292,7 +295,8 @@ def render_missing_data_controls() -> dict[str, any]:
                 missing_fill_method = st.selectbox(
                     "Fill Method", 
                     options=[f.value for f in FillMethod],
-                    help="How to fill in missing values. Forward fill: fill with last known value."
+                    help="How to fill in missing values.\n\n" \
+                    "Forward fill: fill with last known value."
                 )
             else:
                 missing_fill_method = FillMethod.NONE.value
@@ -321,7 +325,7 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
                         "Range (index)", 
                         0, num_points, 
                         (int(num_points * 0.3), int(num_points * 0.4)),
-                        help="Index range of the anomaly. Must span at least one point. "
+                        help="Index range of the anomaly. Must span at least one point.\n\n" \
                              "To simulate a level shift or trend change, stretch the range toward the end."
                     )
                 with cols[2]:
@@ -329,8 +333,10 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
                         "Mode", 
                         ["Add", "Mult", "Slope"], 
                         index=0,
-                        help="How values are modified. "
-                             "'Add' offsets values, 'Mult' scales them, 'Slope' applies a linear ramp."
+                        help="How values are modified.\n\n"
+                             "`Add`: offsets values\n\n" \
+                             "`Mult`: scales values\n\n" \
+                             "`Slope`: applies a linear ramp"
                     )
                 with cols[3]:
                     if anomaly_mode in ["Add", "Mult"]:
@@ -396,18 +402,17 @@ def load_markdown(path: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-# --- Styling ---
+# Styling
 with open("styles.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
-# --- Layout and Page Config ---
+# Layout and Page Config
 st.set_page_config(
     layout="wide",
     page_title="Visual Time Series Generator",
     page_icon="images/favicon.png"
 )
-# st.set_page_config()
 
 left_col, spacer, right_col = st.columns([5, 0.5, 5])
 
