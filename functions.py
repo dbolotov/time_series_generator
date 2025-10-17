@@ -275,6 +275,13 @@ def generate_ts(config):
 
 
 def summarize_series(series: pd.Series) -> pd.DataFrame:
+
+    # Mean crossings calculation
+    centered = series - series.mean()
+    signs = np.sign(centered)
+    signs[signs == 0] = np.sign(centered.shift(1))[signs == 0] # prevent double counting when data is exactly 0
+    mean_crossings = np.sum(signs.diff().fillna(0) != 0)
+
     stats = {
         "Mean": series.mean(),
         "Std Dev": series.std(),
@@ -284,7 +291,7 @@ def summarize_series(series: pd.Series) -> pd.DataFrame:
         "Skew": skew(series, nan_policy="omit"),
         "Kurtosis": kurtosis(series, nan_policy="omit"),
         "ACF (1)": series.autocorr(lag=1),
-        "0 Cross": ((series.shift(1) - series.mean()) * (series - series.mean()) < 0).sum()
+        "μ Cross": mean_crossings
     }
     return pd.DataFrame([stats]).round(3)
 

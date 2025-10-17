@@ -10,4 +10,4 @@ Summary statistics for the time series are displayed under the plot.
 - `Skew`: Asymmetry of the value distribution (positive = right-skewed)
 - `Kurtosis`: Measure of tail heaviness (higher = more outliers)
 - `ACF(1)`: Autocorrelation at lag 1; shows how strongly each value relates to the previous one
-- `0 Cross`: Number of times the series crosses zero
+- `μ Cross`: Number of times the series crosses the mean
