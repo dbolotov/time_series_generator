@@ -179,7 +179,7 @@ def render_data_and_time_controls() -> dict[str, any]:
         with cols[1]:
             rand_seed = st.number_input(
                 "Seed", 
-                0, 100, 42, step=1,
+                0, 10000, 42, step=1,
                 help="Random seed used for generating the time series and anomaly noise.\n\n" \
                 "Missing values use a separate seed."
             )
