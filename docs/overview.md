@@ -9,8 +9,8 @@
 Read the tabs above for more details.
 
 **Use cases**
-- Simulate KPIs like sales, web traffic, or sensor readings
-- Test anomaly detection or imputation algorithms
+- Simulate data like sales, web traffic, or sensor readings
+- Test anomaly detection and imputation algorithms
 - Benchmark forecasting models under controlled conditions
 - Teach concepts like drift, seasonality, or level shifts
 - Create demo data for apps, dashboards, or visualizations

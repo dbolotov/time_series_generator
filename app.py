@@ -188,7 +188,7 @@ def render_data_and_time_controls() -> dict[str, any]:
             start_time = st.text_input(
                 "Starting Timestamp", value="2000-01-01 00:00:00",
                 help="Start time for the generated series.\n\n" \
-                "Format: 'YYYY-MM-DD HH:MM:SS'."
+                "Format: `YYYY-MM-DD HH:MM:SS`"
             )
         with cols[3]:
             time_interval = st.number_input(
@@ -244,7 +244,7 @@ def render_missing_data_controls() -> dict[str, any]:
                 with mode_cols[3]:
                     missing_seed = st.number_input(
                         "Seed", 0, 10000, 42, step=1,
-                        help="Random seed for missing values (does not affect time series generation)."
+                        help="Random seed for missing values."
                     )
                 cfg.update({
                     "missing_pct": missing_pct,
@@ -296,7 +296,8 @@ def render_missing_data_controls() -> dict[str, any]:
                     "Fill Method", 
                     options=[f.value for f in FillMethod],
                     help="How to fill in missing values.\n\n" \
-                    "Forward fill: fill with last known value."
+                    "`Forward Fill`: fill with last known value.\n\n" \
+                    "`Fill with Zero`: fill with 0."
                 )
             else:
                 missing_fill_method = FillMethod.NONE.value
@@ -326,7 +327,7 @@ def render_anomaly_controls(num_points) -> dict[str, any]:
                         0, num_points, 
                         (int(num_points * 0.3), int(num_points * 0.4)),
                         help="Index range of the anomaly. Must span at least one point.\n\n" \
-                             "To simulate a level shift or trend change, stretch the range toward the end."
+                             "To simulate a level shift or trend change, stretch the range toward the start or end of the series."
                     )
                 with cols[2]:
                     anomaly_mode = st.selectbox(
