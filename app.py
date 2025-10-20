@@ -15,7 +15,7 @@ from functions import (
     plot_series
 )
 
-# --- Functions ---
+# Functions
 def render_ou_controls() -> dict[str, any]:
     cfg = {}
     cols = st.columns(3)
@@ -71,6 +71,7 @@ def render_noise_controls() -> dict[str, any]:
             help="Adds a constant upward or downward trend over time."
         )
     return cfg
+
 
 def render_custom_series_controls() -> dict[str, any]:
     cfg = {}
@@ -166,7 +167,6 @@ def render_custom_series_controls() -> dict[str, any]:
     return cfg
 
 
-
 def render_data_and_time_controls() -> dict[str, any]:
     with st.expander("Data and Time Settings"):
         cols = st.columns([1, 1, 2, 1, 1])
@@ -211,7 +211,6 @@ def render_data_and_time_controls() -> dict[str, any]:
         "time_interval": time_interval,
         "interval_unit": interval_unit
     }
-
 
 
 def render_missing_data_controls() -> dict[str, any]:
@@ -398,6 +397,7 @@ def render_plot_settings() -> dict:
         "show_anomalies": show_anomalies,
         "show_missing": show_missing,
     }
+
 
 def load_markdown(path: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
